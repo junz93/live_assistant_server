@@ -1,5 +1,3 @@
-import configparser
-# import datetime
 import docx
 import jieba as jb
 import json
@@ -7,8 +5,6 @@ import logging
 import openai
 import os
 import pickle
-import random
-import threading
 import time
 import urllib.request
 
@@ -20,17 +16,14 @@ from langchain.text_splitter import TokenTextSplitter
 from langchain.document_loaders import DirectoryLoader
 from langchain.vectorstores.faiss import FAISS
 from langchain.docstore.document import Document
+from live_assistant.config_utils import auth_config
 
+# data_dir_path = "../conf/data_dir.ini"
+# data_dir_conf = configparser.ConfigParser()
+# data_dir_conf.read(data_dir_path, encoding="UTF-8")
 
-data_dir_path = "../conf/data_dir.ini"
-data_dir_conf = configparser.ConfigParser()
-data_dir_conf.read(data_dir_path, encoding="UTF-8")
-# danmu_wav_dir = data_dir_conf.get("parameter", "DanmuFile")
-
-# os.environ["OPENAI_API_KEY"] = "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"
-os.environ["OPENAI_API_KEY"] = "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"
-os.environ["SERPAPI_API_KEY"] = '5ff319fe5f43f1d8859b0fb39627dc5a2cbbd7e6d7de981b5376a0427688e7d0'
-openai.api_key = os.environ["OPENAI_API_KEY"]
+openai.api_key = auth_config['openai']['ApiKey']
+os.environ["SERPAPI_API_KEY"] = auth_config['serpapi']['ApiKey']
 
 search_index = None
 now = datetime.now()
@@ -273,7 +266,7 @@ def get_answer(question: str, user_id: str, event_time: int) -> str:
         return ori_answer
     
     except Exception as e:
-        logging.error(f"生成Gpt回答出错，输入：{question}，线程id：{threading.get_ident()}", exc_info=True)
+        logging.error(f"生成Gpt回答出错，输入：{question}", exc_info=True)
     # finally:
     #     ready_file = f"{danmu_wav_dir}/{str(message_priority).zfill(2)}_{start_time}/{str(message_priority).zfill(2)}_{start_time}_ready"
     #     try:

@@ -3,22 +3,25 @@
 from alibabacloud_green20220302.client import Client
 from alibabacloud_green20220302 import models
 from alibabacloud_tea_openapi.models import Config
-from alibabacloud_tea_util.client import Client as UtilClient
-from alibabacloud_tea_util import models as util_models
+# from alibabacloud_tea_util.client import Client as UtilClient
+# from alibabacloud_tea_util import models as util_models
+from live_assistant.config_utils import auth_config
+
 import json
 import logging
+import os
 import uuid
 
 config = Config(
-    access_key_id='LTAI5tFtFcab3TxTwfRgHeEC',
-    access_key_secret='IGbwGqaczwNrVW12W7DNyD9uJpecHQ',
+    access_key_id=auth_config['aliyun']['AccessKeyId'],
+    access_key_secret=auth_config['aliyun']['AccessKeySecret'],
     # 连接时超时时间，单位毫秒（ms）。
     connect_timeout=3000,
     # 读取时超时时间，单位毫秒（ms）。
     read_timeout=3000,
     # 接入区域和地址请根据实际情况修改。
     region_id='cn-beijing',
-    endpoint='green-cip.cn-beijing.aliyuncs.com'
+    endpoint='green-cip.cn-beijing.aliyuncs.com',
 )
 client = Client(config)
 
