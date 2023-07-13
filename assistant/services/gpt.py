@@ -8,7 +8,7 @@ import pickle
 import time
 import urllib.request
 
-from .content_censorship import check_text
+from assistant.services import content_censorship
 from collections import defaultdict
 from datetime import datetime
 from langchain.embeddings.openai import OpenAIEmbeddings
@@ -18,9 +18,6 @@ from langchain.vectorstores.faiss import FAISS
 from langchain.docstore.document import Document
 from live_assistant.config_utils import auth_config
 
-# data_dir_path = "../conf/data_dir.ini"
-# data_dir_conf = configparser.ConfigParser()
-# data_dir_conf.read(data_dir_path, encoding="UTF-8")
 
 openai.api_key = auth_config['openai']['ApiKey']
 os.environ["SERPAPI_API_KEY"] = auth_config['serpapi']['ApiKey']
@@ -243,7 +240,7 @@ def get_answer(question: str, user_id: str, event_time: int) -> str:
             c_i = max([texts.rfind(x) for x in charector]) + 1
             if texts and (c_i >= 20 or event["choices"][0]["finish_reason"] == "stop"):
                 gpt_time_list.append(datetime.fromtimestamp(round(time.time())).isoformat())
-                if not check_text(texts):
+                if not content_censorship.check_text(texts):
                     break
                 c_i = c_i if c_i >= 20 else len(texts)
                 # bad_words = ["下次", "再见", "下期", "拜拜", "谢谢大家收看", "结束", "收看"]

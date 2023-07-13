@@ -1,5 +1,3 @@
-# coding=utf-8
-
 from alibabacloud_green20220302.client import Client
 from alibabacloud_green20220302 import models
 from alibabacloud_tea_openapi.models import Config
@@ -9,7 +7,6 @@ from live_assistant.config_utils import auth_config
 
 import json
 import logging
-import os
 import uuid
 
 config = Config(
