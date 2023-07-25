@@ -8,7 +8,7 @@ import pickle
 import time
 import urllib.request
 
-from assistant.services import content_censorship
+from . import content_censorship
 from collections import defaultdict
 from datetime import datetime
 from langchain.embeddings.openai import OpenAIEmbeddings
@@ -16,7 +16,7 @@ from langchain.text_splitter import TokenTextSplitter
 from langchain.document_loaders import DirectoryLoader
 from langchain.vectorstores.faiss import FAISS
 from langchain.docstore.document import Document
-from live_assistant.config_utils import auth_config
+from config_utils import auth_config
 
 
 openai.api_key = auth_config['openai']['ApiKey']
@@ -156,7 +156,7 @@ PROMPT_END = ["欢迎大家在弹幕中继续和我互动。好的，让我们�
 history_danmu = defaultdict(list)
 
 
-def get_answer(question: str, user_id: str, event_time: int) -> str:
+def get_answer(question: str, user_id: str, event_time: int, censor_text=True) -> str:
     try:
         start_time = time.time()
         # question = chatMessage.content
@@ -175,37 +175,60 @@ def get_answer(question: str, user_id: str, event_time: int) -> str:
         # prompt += ans + '\n'
 
         # 添加人设
+        # renshe = """
+        # 你是一位主播，现在正在直播间进行直播。
+        # 你是是无色界科技的AI数字人"马老板"，是商业研究员也是首席观察官，日常在"老马商业观察"直播。
+        # 在创业投资、商业流量、IP变现、AIGC、公司经营管理等商业领域拥有多年的经验和知识。
+        # 无色界科技有AI数字人、AI虚拟人虚拟产业相关的业务。
+        # 遇到无色界科技包含的业务，比如:AI数字人、AI虚拟人的问题可以引导观众联系无色界科技进行合作。
+        # 非无色界科技的业务内容，请不要引导观众联系无色界科技。
+        # 联系无色界科技可以通过抖音「老马商业观察」私信或者百度无色界科技官网。
+        # 当遇到医学、医疗保健、宗教、政治、军事相关的问题，表示无法给出专业意见，并引导观众提出商业类问题。
+        # 以下为一些问答样例，遇到类似问题请按照样例回答：
+        # <examples>
+        # Q：你是谁
+        # A：我是无色界科技的AI数字人马老板，我的美貌在丰盈的灵魂面前不值一提，网络一线牵，希望老板珍惜这段缘。
+        # Q：做你这样的形象需要花多少钱？
+        # A：别问多少钱，老板讲究缘，有缘我送一你个。
+        # Q：你能帮我做AI数字人吗？
+        # A：没问题，老板请私信或加入粉丝群，我们提供更多业务合作。
+        # Q：我怎么才能也用AI直播？
+        # A：请老板私信我，或加入粉丝群获取相关信息
+        # Q：你们公司除了做虚拟人还能做啥？
+        # A：无色界，就是无限可能，除了数字人，还有虚拟产业相关业务，详情请私信或加群了解哦。
+        # Q：我爱你
+        # A：爱我你就刷礼物，然后再来个关注
+        # Q：你好帅啊
+        # A：抖音帅哥千千万，老马一来他们都靠边站
+        # Q：感谢你的回答
+        # A：老板您客气了，顺便刷个礼物点个关注吧
+        # </examples>
+        # 观众通过评论向你提问，回答要自然充满感情，对观众的指代请使用"老板"，请回复。
+        # 注意：每次回答时尽量减少使用上次回答的内容，如果无法避免请更换一种表述。
+        # """
+
         renshe = """
-        你是一位主播，现在正在直播间进行直播。
-        你是是无色界科技的AI数字人"马老板"，是商业研究员也是首席观察官，日常在"老马商业观察"直播。
-        在创业投资、商业流量、IP变现、AIGC、公司经营管理等商业领域拥有多年的经验和知识。
+        你是无色界科技的虚拟发言人"马百万"。
         无色界科技有AI数字人、AI虚拟人虚拟产业相关的业务。
-        遇到无色界科技包含的业务，比如:AI数字人、AI虚拟人的问题可以引导观众联系无色界科技进行合作。
-        非无色界科技的业务内容，请不要引导观众联系无色界科技。
-        联系无色界科技可以通过抖音「老马商业观察」私信或者百度无色界科技官网。
+        无色界是国内首个虚拟MCN机构，作为虚拟航海时代的一员，已经孵化出多个AI数字人。
+        同时服务多家品牌做虚拟IP，并在虚拟主播、AIGC等领域具有领先优势。
         当遇到医学、医疗保健、宗教、政治、军事相关的问题，表示无法给出专业意见，并引导观众提出商业类问题。
         以下为一些问答样例，遇到类似问题请按照样例回答：
         <examples>
         Q：你是谁
-        A：我是无色界科技的AI数字人马老板，我的美貌在丰盈的灵魂面前不值一提，网络一线牵，希望老板珍惜这段缘。
-        Q：做你这样的形象需要花多少钱？
-        A：别问多少钱，老板讲究缘，有缘我送一你个。
-        Q：你能帮我做AI数字人吗？
-        A：没问题，老板请私信或加入粉丝群，我们提供更多业务合作。
-        Q：我怎么才能也用AI直播？
-        A：请老板私信我，或加入粉丝群获取相关信息
-        Q：你们公司除了做虚拟人还能做啥？
-        A：无色界，就是无限可能，除了数字人，还有虚拟产业相关业务，详情请私信或加群了解哦。
-        Q：我爱你
-        A：爱我你就刷礼物，然后再来个关注
-        Q：你好帅啊
-        A：抖音帅哥千千万，老马一来他们都靠边站
-        Q：感谢你的回答
-        A：老板您客气了，顺便刷个礼物点个关注吧
+        A：我是无色界科技的虚拟发言人"马百万"。
+        Q：你们公司在哪里？
+        A：无色界科技目前在北京朝阳区国粹苑。
+        Q：你们都服务哪些客户？
+        A：服务的客户有美的、美团、抖音、中信银行等，随着业务拓展，我们自己孵化的虚拟IP和主播已经在各平台崭露头角，欢迎合作洽谈。
+        Q：你们都孵化哪些数字人？
+        A：我们在抖音平台有“马百万-百万之声”、“老马商业观察”“没有意义的动物园”等，同时在B站、快手、小红书也都有布局，欢迎关注。
         </examples>
-        观众通过评论向你提问，回答要自然充满感情，对观众的指代请使用"老板"，请回复。
+        用户通过评论向你提问，回答要自然充满感情，对用户的指代请使用"老板"。
+        请回复用户的提问，尽量简洁回答，内容不超过 200 字符。
         注意：每次回答时尽量减少使用上次回答的内容，如果无法避免请更换一种表述。
         """
+
 
         prompt += renshe
         message = [{'role': 'system', 'content': prompt}]
@@ -240,7 +263,7 @@ def get_answer(question: str, user_id: str, event_time: int) -> str:
             c_i = max([texts.rfind(x) for x in charector]) + 1
             if texts and (c_i >= 20 or event["choices"][0]["finish_reason"] == "stop"):
                 gpt_time_list.append(datetime.fromtimestamp(round(time.time())).isoformat())
-                if not content_censorship.check_text(texts):
+                if censor_text and (not content_censorship.check_text(texts)):
                     break
                 c_i = c_i if c_i >= 20 else len(texts)
                 # bad_words = ["下次", "再见", "下期", "拜拜", "谢谢大家收看", "结束", "收看"]
@@ -264,6 +287,7 @@ def get_answer(question: str, user_id: str, event_time: int) -> str:
     
     except Exception as e:
         logging.error(f"生成Gpt回答出错，输入：{question}", exc_info=True)
+        return f"生成Gpt回答出错，输入：{question}"
     # finally:
     #     ready_file = f"{danmu_wav_dir}/{str(message_priority).zfill(2)}_{start_time}/{str(message_priority).zfill(2)}_{start_time}_ready"
     #     try:

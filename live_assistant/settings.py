@@ -31,6 +31,8 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'assistant',
     'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -69,7 +71,31 @@ TEMPLATES = [
     },
 ]
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'default': {
+            'format': '%(asctime)s [%(levelname)s] %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        }
+    },
+    'handlers': {
+        'console': {
+            # 'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'default',
+        }
+    },
+    'root': {
+        'level': 'INFO',
+        'handlers': ['console'],
+    },
+}
+
 WSGI_APPLICATION = 'live_assistant.wsgi.application'
+
+ASGI_APPLICATION = 'live_assistant.asgi.application'
 
 
 # Database
@@ -101,6 +127,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# TODO: set CORS headers for only required endpoints
 CORS_ALLOW_ALL_ORIGINS = True
 
 

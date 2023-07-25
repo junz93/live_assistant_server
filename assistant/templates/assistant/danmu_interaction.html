@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI弹幕回复</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" integrity="sha512-t4GWSVZO1eC8BM339Xd7Uphw5s17a86tIZIj8qRxhnKub6WoyhnrxeCIMeAqBPgdZGlCcG2PrZjMc+Wr78+5Xg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>AI弹幕回复</h1>
+      <div class="mb-3">
+        <label for="room-id" class="form-label">直播间ID</label>
+        <input type="text" class="form-control" id="room-id" required>
+      </div>
+      <button type="button" class="btn btn-primary mb-4" id="start-listening">开始</button>
+
+      <div class="row">
+        <div class="col-6 border border-3">
+          <h2>礼物消息</h2>
+          <div id="gift-messages"></div>
+        </div>
+        <div class="col-6 border border-3">
+          <h2>AI弹幕回复提示</h2>
+          <div id="chat-messages"></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js" integrity="sha512-3gJwYpMe3QewGELv8k/BX9vcqhryRdzRMxVfq6ngyWXwo03GFEzjsUm8Q7RZcHPHksttq7/GFoxjCVUjkjvPdw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js" integrity="sha512-VK2zcvntEufaimc+efOYi622VN5ZacdnufnmX7zIhCPmjhKnOi9ZDMtg1/ug5l183f19gG1/cBstPO4D8N/Img==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+      $('#start-listening').on('click', function() {
+        let roomId = $('#room-id').val();
+        roomId = roomId ? roomId.trim() : '';
+        if (!roomId) {
+          alert('Empty room ID!');
+        } else {
+          const socket = new WebSocket(`ws://${window.location.host}/ws/assistant/danmu/douyin/${roomId}/`);
+          socket.onopen = function(e) { 
+            console.log(`Websocket connection opened. Event: ${JSON.stringify(e)}`);
+          };
+          socket.onmessage = function(e) {
+            console.log(`Received message. Event: ${JSON.stringify(e)}`);
+            const data = JSON.parse(e.data);
+            const $messageItem = $('<div></div>').text(e.data);
+            switch (data.type) {
+              case 'GIFT':
+                $messageItem.addClass('gift-message mb-2');
+                $('#gift-messages').append($messageItem);
+                break;
+              case 'DANMU':
+                $messageItem.addClass('chat-message mb-2');
+                $('#chat-messages').append($messageItem);
+                break;
+              default:
+                console.warn(`Unsupported message type: ${data.type}`);
+            }
+          };
+          socket.onclose = function(e) {
+            console.error(`Websocket connection closed. Event: ${JSON.stringify(e)}`);
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

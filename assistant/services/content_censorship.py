@@ -3,7 +3,7 @@ from alibabacloud_green20220302 import models
 from alibabacloud_tea_openapi.models import Config
 # from alibabacloud_tea_util.client import Client as UtilClient
 # from alibabacloud_tea_util import models as util_models
-from live_assistant.config_utils import auth_config
+from config_utils import auth_config
 
 import json
 import logging

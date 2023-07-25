@@ -1,3 +1,4 @@
 __pycache__
 auth.ini
 *.sqlite3
+*.db
