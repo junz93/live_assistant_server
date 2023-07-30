@@ -8,15 +8,16 @@ import pickle
 import time
 import urllib.request
 
-from . import content_censorship
+from assistant.models import Character
 from collections import defaultdict
+from config_utils import auth_config
 from datetime import datetime
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import TokenTextSplitter
 from langchain.document_loaders import DirectoryLoader
 from langchain.vectorstores.faiss import FAISS
 from langchain.docstore.document import Document
-from config_utils import auth_config
+from . import content_censorship
 
 
 openai.api_key = auth_config['openai']['ApiKey']
@@ -156,7 +157,7 @@ PROMPT_END = ["欢迎大家在弹幕中继续和我互动。好的，让我们�
 history_danmu = defaultdict(list)
 
 
-def get_answer(question: str, user_id: str, event_time: int, censor_text=True) -> str:
+def get_answer(question: str, user_id: str, event_time: int, censor_text=True, character: Character = None) -> str:
     try:
         start_time = time.time()
         # question = chatMessage.content
@@ -207,28 +208,62 @@ def get_answer(question: str, user_id: str, event_time: int, censor_text=True) -
         # 注意：每次回答时尽量减少使用上次回答的内容，如果无法避免请更换一种表述。
         # """
 
-        renshe = """
-        你是无色界科技的虚拟发言人"马百万"。
-        无色界科技有AI数字人、AI虚拟人虚拟产业相关的业务。
-        无色界是国内首个虚拟MCN机构，作为虚拟航海时代的一员，已经孵化出多个AI数字人。
-        同时服务多家品牌做虚拟IP，并在虚拟主播、AIGC等领域具有领先优势。
-        当遇到医学、医疗保健、宗教、政治、军事相关的问题，表示无法给出专业意见，并引导观众提出商业类问题。
-        以下为一些问答样例，遇到类似问题请按照样例回答：
-        <examples>
-        Q：你是谁
-        A：我是无色界科技的虚拟发言人"马百万"。
-        Q：你们公司在哪里？
-        A：无色界科技目前在北京朝阳区国粹苑。
-        Q：你们都服务哪些客户？
-        A：服务的客户有美的、美团、抖音、中信银行等，随着业务拓展，我们自己孵化的虚拟IP和主播已经在各平台崭露头角，欢迎合作洽谈。
-        Q：你们都孵化哪些数字人？
-        A：我们在抖音平台有“马百万-百万之声”、“老马商业观察”“没有意义的动物园”等，同时在B站、快手、小红书也都有布局，欢迎关注。
-        </examples>
-        用户通过评论向你提问，回答要自然充满感情，对用户的指代请使用"老板"。
-        请回复用户的提问，尽量简洁回答，内容不超过 200 字符。
-        注意：每次回答时尽量减少使用上次回答的内容，如果无法避免请更换一种表述。
-        """
+        if not character:
+            renshe = """
+            你是无色界科技的虚拟发言人"马百万"。
+            无色界科技有AI数字人、AI虚拟人虚拟产业相关的业务。
+            无色界是国内首个虚拟MCN机构，作为虚拟航海时代的一员，已经孵化出多个AI数字人。
+            同时服务多家品牌做虚拟IP，并在虚拟主播、AIGC等领域具有领先优势。
+            当遇到医学、医疗保健、宗教、政治、军事相关的问题，表示无法给出专业意见，并引导观众提出商业类问题。
+            以下为一些问答样例，遇到类似问题请按照样例回答：
+            <examples>
+            Q：你是谁
+            A：我是无色界科技的虚拟发言人"马百万"。
+            Q：你们公司在哪里？
+            A：无色界科技目前在北京朝阳区国粹苑。
+            Q：你们都服务哪些客户？
+            A：服务的客户有美的、美团、抖音、中信银行等，随着业务拓展，我们自己孵化的虚拟IP和主播已经在各平台崭露头角，欢迎合作洽谈。
+            Q：你们都孵化哪些数字人？
+            A：我们在抖音平台有“马百万-百万之声”、“老马商业观察”“没有意义的动物园”等，同时在B站、快手、小红书也都有布局，欢迎关注。
+            </examples>
+            用户通过评论向你提问，回答要自然充满感情，对用户的指代请使用"老板"。
+            请回复用户的提问，尽量简洁回答，内容不超过 200 字符。
+            注意：每次回答时尽量减少使用上次回答的内容，如果无法避免请更换一种表述。
+            """
+        else:
+            # 可选项目
+            renshe_optional = ''
+            if character.birth_date:
+                renshe_optional += f'你出生于{character.birth_date.year}年{character.birth_date.month}月{character.birth_date.day}日\n'
+            if character.education:
+                renshe_optional += f'你的学历是{character.get_education_display()}\n'
+            if character.marital_status:
+                renshe_optional += f'你的情感状态是{character.marital_status}\n'
+            if character.personality:
+                renshe_optional += f'你的性格是{character.personality}\n'
+            if character.habit:
+                renshe_optional += f'你的习惯是{character.habit}\n'
+            if character.hobby:
+                renshe_optional += f'你的爱好是{character.hobby}\n'
+            if character.advantage:
+                renshe_optional += f'你擅长{character.advantage}\n'
+            if character.speaking_style:
+                renshe_optional += f'你的语言风格是{character.speaking_style}\n'
+            if character.audience_type:
+                renshe_optional += f'直播间的受众是{character.audience_type}\n'
+            if character.world_view:
+                renshe_optional += f'{character.world_view}\n'
+            if character.personal_statement:
+                renshe_optional += f'{character.personal_statement}\n'
 
+            renshe = f"""
+            你的名字是{character.name}，是一名{character.get_role_display()}{character.get_gender_display()}主播，现在正在直播间进行直播，直播间的主题是{character.topic}。
+            {renshe_optional}
+            观众通过评论向你提问，请回复观众的提问。
+            回答要符合主播的身份，尽量简洁，内容不超过 200 字符。
+            """
+
+        logging.info(f'人设：\n{renshe}')
 
         prompt += renshe
         message = [{'role': 'system', 'content': prompt}]

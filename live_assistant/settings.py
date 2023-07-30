@@ -127,8 +127,11 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# TODO: set CORS headers for only required endpoints
-CORS_ALLOW_ALL_ORIGINS = True
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    # TODO: set CORS headers for only required endpoints
+    pass
 
 
 # Internationalization

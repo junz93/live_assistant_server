@@ -1,34 +1,43 @@
 import time
 import datetime
 import json
+import logging
 import os
 import random
 import threading
-import logging
 
+from assistant.models import Character
 from assistant.services.gpt import get_answer, init_embedding
 from channels.generic.websocket import WebsocketConsumer
-from . import gol
 from . import message as message_utils
 from . import sqlite_conn
 from .common_enum import MessageEnum, PriorityMessage
+from .gol import Gol
 
-danmu_file = open('./logs/danmu.json', 'a', encoding='utf-8')
-gift_file = open('./logs/gift.json', 'a', encoding='utf-8')
-enter_file = open('./logs/enter.json', 'a', encoding='utf-8')
-like_file = open('./logs/like.json', 'a', encoding='utf-8')
+# danmu_file = open('./logs/danmu.json', 'a', encoding='utf-8')
+# gift_file = open('./logs/gift.json', 'a', encoding='utf-8')
+# enter_file = open('./logs/enter.json', 'a', encoding='utf-8')
+# like_file = open('./logs/like.json', 'a', encoding='utf-8')
 
 message_path = "./conf/message_describe.json"
 with open(message_path, "r", encoding="utf-8") as f:
     message_describe = json.load(f)
 
 class MessageHandler:
-    def __init__(self, danmu_consumer: WebsocketConsumer):
+    def __init__(self, danmu_consumer: WebsocketConsumer, gol: Gol, character: Character):
         self.danmu_consumer = danmu_consumer
+        self.gol = gol
+        self.character = character
         self.stop_requested = False
 
+        t = threading.Thread(target=self.handle_message, daemon=True)
+        t.start()
+
+    def close(self):
+        self.stop_requested = True
+
     def _deal_danmu(self, message_priority, chat_message):
-        logging.info(f"\t处理弹幕中： {message_priority} -- {chat_message.user.nickName}: {chat_message.content}，线程id：{threading.get_ident()}，各优先级消息还剩余：{gol.get_all_list_num()}")
+        logging.info(f"\t处理弹幕中： {message_priority} -- {chat_message.user.nickName}: {chat_message.content}，线程id：{threading.get_ident()}，各优先级消息还剩余：{self.gol.get_all_list_num()}")
 
         # 过滤弹幕\昵称中的表情
         chat_message.content = message_utils.filer_biaoqing(chat_message.content)
@@ -39,7 +48,7 @@ class MessageHandler:
         chat_message.user.nickName = message_utils.filer_nickname(chat_message.user.nickName)
 
         if chat_message.content:
-            answer = get_answer(chat_message.content, chat_message.user.id, chat_message.eventTime)
+            answer = get_answer(chat_message.content, chat_message.user.id, chat_message.eventTime, character=self.character)
         else:
             answer = ""
 
@@ -54,27 +63,27 @@ class MessageHandler:
             self.danmu_consumer.send(text_data=json.dumps(json_data, ensure_ascii=False))
             logging.info(f'Sent message to WS client: {json.dumps(json_data, ensure_ascii=False)}')
 
-            user_priority = gol.get_user_priority(chat_message.common.roomId, chat_message.user)
+            user_priority = self.gol.get_user_priority(chat_message.common.roomId, chat_message.user)
             if user_priority <= 5 or user_priority == 7:
                 sqlite_conn.db.insert_history_danmu(chat_message, answer)
 
-        if danmu_file is not None:
-            msg = json.dumps({
-                'danmu_time': datetime.datetime.fromtimestamp(chat_message.eventTime).isoformat(),
-                'user_id': chat_message.user.id,
-                'nickName': chat_message.user.nickName,
-                'room_id': chat_message.common.roomId,
-                'content': chat_message.content,
-                'answer': answer,
-            }, ensure_ascii=False)
-            danmu_file.write(f'{msg}\n')
-            danmu_file.flush()
+        # if danmu_file is not None:
+        #     msg = json.dumps({
+        #         'danmu_time': datetime.datetime.fromtimestamp(chat_message.eventTime).isoformat(),
+        #         'user_id': chat_message.user.id,
+        #         'nickName': chat_message.user.nickName,
+        #         'room_id': chat_message.common.roomId,
+        #         'content': chat_message.content,
+        #         'answer': answer,
+        #     }, ensure_ascii=False)
+        #     danmu_file.write(f'{msg}\n')
+        #     danmu_file.flush()
 
 
     def _deal_gift(self, message_priority, gift_message):
         start_time = time.time()
         try:
-            logging.info(f"\t处理礼物中：{gift_message.common.describe}，线程id：{threading.get_ident()}，各优先级消息还剩余：{gol.get_all_list_num()}")
+            logging.info(f"\t处理礼物中：{gift_message.common.describe}，线程id：{threading.get_ident()}，各优先级消息还剩余：{self.gol.get_all_list_num()}")
             user_name = gift_message.user.nickName
             gift_name = "{}个".format(gift_message.totalCount if gift_message.totalCount else "1") + gift_message.gift.describe.strip("送出")
 
@@ -107,19 +116,19 @@ class MessageHandler:
             self.danmu_consumer.send(text_data=json.dumps(json_data, ensure_ascii=False))
             logging.info(f'Sent message to WS client: {json.dumps(json_data, ensure_ascii=False)}')
 
-            if gift_file is not None:
-                msg = json.dumps({
-                    'gift_time': datetime.datetime.fromtimestamp(gift_time).isoformat(),
-                    'wav_time': datetime.datetime.fromtimestamp(start_time).isoformat(),
-                    'user_id': gift_message.user.id,
-                    'nickName': gift_message.user.nickName,
-                    'room_id': gift_message.common.roomId,
-                    'describe': gift_describe,
-                }, ensure_ascii=False)
-                gift_file.write(f'{msg}\n')
-                gift_file.flush()
+            # if gift_file is not None:
+            #     msg = json.dumps({
+            #         'gift_time': datetime.datetime.fromtimestamp(gift_time).isoformat(),
+            #         'wav_time': datetime.datetime.fromtimestamp(start_time).isoformat(),
+            #         'user_id': gift_message.user.id,
+            #         'nickName': gift_message.user.nickName,
+            #         'room_id': gift_message.common.roomId,
+            #         'describe': gift_describe,
+            #     }, ensure_ascii=False)
+            #     gift_file.write(f'{msg}\n')
+            #     gift_file.flush()
         except Exception as e:
-            logging.exception(f"生成礼物回复出错，输入：{gift_describe}。异常：{e}")
+            logging.exception(f"生成礼物回复出错，输入：{gift_describe}")
             # traceback.print_exc()
 
 
@@ -249,7 +258,7 @@ class MessageHandler:
                 if self.stop_requested:
                     break
                 
-                message_priority, message_type, message = gol.get_message()
+                message_priority, message_type, message = self.gol.get_message()
                 if message_type is None:
                     pass
                 # elif message_type == MessageEnum.InsertMessage:
@@ -264,7 +273,7 @@ class MessageHandler:
                 #     self._deal_like(message_priority, message)
                 time.sleep(1)
             except Exception as e:
-                logging.error(f"Failed to handle message. Exception: {e}", exc_info=True)
+                logging.error(f"Failed to handle message", exc_info=True)
 
 
     def reload_embedding(self):
@@ -280,4 +289,4 @@ class MessageHandler:
                     init_embedding()
                 time.sleep(5)
             except Exception as e:
-                logging.exception(f"Failed to reload embedding. Exception: {e}")
+                logging.exception(f"Failed to reload embedding.")

@@ -10,6 +10,10 @@
     <div class="container">
       <h1>AI弹幕回复</h1>
       <div class="mb-3">
+        <label for="room-id" class="form-label">人设ID</label>
+        <input type="text" class="form-control" id="character-id" required>
+      </div>
+      <div class="mb-3">
         <label for="room-id" class="form-label">直播间ID</label>
         <input type="text" class="form-control" id="room-id" required>
       </div>
@@ -31,15 +35,24 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js" integrity="sha512-VK2zcvntEufaimc+efOYi622VN5ZacdnufnmX7zIhCPmjhKnOi9ZDMtg1/ug5l183f19gG1/cBstPO4D8N/Img==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
       $('#start-listening').on('click', function() {
+        let pingIntervalId = null;
+
+        let characterId = $('#character-id').val();
         let roomId = $('#room-id').val();
+        characterId = characterId ? characterId.trim() : '';
         roomId = roomId ? roomId.trim() : '';
         if (!roomId) {
           alert('Empty room ID!');
         } else {
-          const socket = new WebSocket(`ws://${window.location.host}/ws/assistant/danmu/douyin/${roomId}/`);
-          socket.onopen = function(e) { 
+          const socket = new WebSocket(`ws://${window.location.host}/ws/assistant/live_prompt/douyin/${roomId}?character_id=${characterId}`);
+          
+          socket.onopen = function(e) {
             console.log(`Websocket connection opened. Event: ${JSON.stringify(e)}`);
+            pingIntervalId = setInterval(function() {
+              socket.send(JSON.stringify({ 'type': 'PING' }));
+            }, 30000);
           };
+
           socket.onmessage = function(e) {
             console.log(`Received message. Event: ${JSON.stringify(e)}`);
             const data = JSON.parse(e.data);
@@ -57,8 +70,12 @@
                 console.warn(`Unsupported message type: ${data.type}`);
             }
           };
+
           socket.onclose = function(e) {
             console.error(`Websocket connection closed. Event: ${JSON.stringify(e)}`);
+            if (pingIntervalId) {
+              clearInterval(pingIntervalId);
+            }
           }
         }
       });
