@@ -263,7 +263,7 @@ def get_answer(question: str, user_id: str, event_time: int, censor_text=True, c
             回答要符合主播的身份，尽量简洁，内容不超过 200 字符。
             """
 
-        logging.info(f'人设：\n{renshe}')
+        # logging.info(f'人设：\n{renshe}')
 
         prompt += renshe
         message = [{'role': 'system', 'content': prompt}]

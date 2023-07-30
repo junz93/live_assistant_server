@@ -91,6 +91,17 @@ class Gol:
         self.message_list = [self._insert_list, self._gift_vip_list, self._gift_expensive_list, self._danmu_vip_list, self._enter_highlevel_list, self._gift_middle_list,
                         self._danmu_expensive_list, self._danmu_middle_list, self._gift_small_list, self._danmu_highlevel_list, self._danmu_list,
                         self._like_list]
+        
+        self.gift_message_lists = [self._gift_vip_list, self._gift_expensive_list, self._gift_middle_list, self._gift_small_list]
+        self.gift_message_locks = [self._gift_vip_lock, self._gift_expensive_lock, self._gift_middle_lock, self._gift_small_lock]
+        self.gift_message_priorities = [PriorityMessage.GiftVip, PriorityMessage.GiftExpensive, PriorityMessage.GiftMiddle, PriorityMessage.GiftSmall]
+
+        self.danmu_message_lists = [self._danmu_vip_list, self._danmu_expensive_list, self._danmu_middle_list, self._danmu_highlevel_list, self._danmu_list]
+        self.danmu_message_locks = [self._danmu_vip_lock, self._danmu_expensive_lock, self._danmu_middle_lock, self._danmu_highlevel_lock, self._danmu_lock]
+        self.danmu_message_priorities = [PriorityMessage.DanmuVip, PriorityMessage.DanmuExpensive, PriorityMessage.DanmuMiddle, PriorityMessage.DanmuHighLevel, PriorityMessage.Danmu]
+
+        self.gift_prioritized = True
+
         # global message_lock
         self.message_lock = [self._insert_lock, self._gift_vip_lock, self._gift_expensive_lock, self._danmu_vip_lock, self._enter_highlevel_lock, self._gift_middle_lock,
                         self._danmu_expensive_lock, self._danmu_middle_lock, self._gift_small_lock, self._danmu_highlevel_lock, self._danmu_lock,
@@ -169,26 +180,26 @@ class Gol:
 
 
     def is_add_message(self, local_time, limit_dict, limit_lock, user_id, limit):
-        g_mit, g_num, u_mit, u_num = limit
-        if limit_dict["global"]["num"] >= g_num and local_time - limit_dict["global"]["time"] <= g_mit * 60:
-            return False
+        # g_mit, g_num, u_mit, u_num = limit
+        # if limit_dict["global"]["num"] >= g_num and local_time - limit_dict["global"]["time"] <= g_mit * 60:
+        #     return False
 
-        with limit_lock:
-            if user_id not in limit_dict.keys():
-                limit_dict[user_id] = {"time": time.time(), "num": 1}
-            elif limit_dict[user_id]["num"] >= u_num and local_time - limit_dict[user_id][
-                "time"] <= u_mit * 60: \
-                    return False
-            # 更新user_id
-            elif limit_dict[user_id]["time"] <= u_mit * 60:
-                limit_dict[user_id]["num"] += 1
-            elif limit_dict[user_id]["time"] > u_mit * 60:
-                limit_dict[user_id] = {"time": time.time(), "num": 1}
-            # 更新global
-            elif local_time - limit_dict["global"]["time"] <= g_mit * 60:
-                limit_dict["global"]["num"] += 1
-            elif local_time - limit_dict["global"]["time"] > g_mit * 60:
-                limit_dict["global"] = {"time": time.time(), "num": 1}
+        # with limit_lock:
+        #     if user_id not in limit_dict.keys():
+        #         limit_dict[user_id] = {"time": time.time(), "num": 1}
+        #     elif limit_dict[user_id]["num"] >= u_num and local_time - limit_dict[user_id][
+        #         "time"] <= u_mit * 60: \
+        #             return False
+        #     # 更新user_id
+        #     elif limit_dict[user_id]["time"] <= u_mit * 60:
+        #         limit_dict[user_id]["num"] += 1
+        #     elif limit_dict[user_id]["time"] > u_mit * 60:
+        #         limit_dict[user_id] = {"time": time.time(), "num": 1}
+        #     # 更新global
+        #     elif local_time - limit_dict["global"]["time"] <= g_mit * 60:
+        #         limit_dict["global"]["num"] += 1
+        #     elif local_time - limit_dict["global"]["time"] > g_mit * 60:
+        #         limit_dict["global"] = {"time": time.time(), "num": 1}
 
         return True
 
@@ -317,9 +328,15 @@ class Gol:
 
 
     def get_message(self):
-        for i, (_list, _lock) in enumerate(zip(self.message_list, self.message_lock)):
+        msg_priorities = self.gift_message_priorities if self.gift_prioritized else self.danmu_message_priorities
+        msg_lists = self.gift_message_lists if self.gift_prioritized else self.danmu_message_lists
+        msg_locks = self.gift_message_locks if self.gift_prioritized else self.danmu_message_locks
+        self.gift_prioritized = not self.gift_prioritized
+
+        # for priority, (_list, _lock) in enumerate(zip(self.message_list, self.message_lock)):
+        for priority, _list, _lock in zip(msg_priorities, msg_lists, msg_locks):
             # 插入消息单独处理
-            if i == PriorityMessage.InsertPriority:
+            if priority == PriorityMessage.InsertPriority:
                 if self._insert_timer.toc() >= 3*60:
                     with self._like_lock:
                         message = self._like_list.pop() if len(self._like_list) > 0 else None
@@ -327,25 +344,55 @@ class Gol:
                     message_type = MessageEnum.InsertMessage
 
                     self._insert_timer.tic()
-                    return i, message_type, message
+                    return int(priority), message_type, message
 
             # 其他消息
             else:
                 message = self.get_list(_list, _lock)
                 if message:
-                    if i in [PriorityMessage.GiftVip.value, PriorityMessage.GiftExpensive.value,
-                            PriorityMessage.GiftMiddle.value, PriorityMessage.GiftSmall.value]:
+                    if priority in [PriorityMessage.GiftVip, PriorityMessage.GiftExpensive,
+                            PriorityMessage.GiftMiddle, PriorityMessage.GiftSmall]:
                         message_type = MessageEnum.GiftMessage
-                    elif i in [PriorityMessage.DanmuVip.value, PriorityMessage.DanmuExpensive.value,
-                            PriorityMessage.DanmuMiddle.value, PriorityMessage.DanmuHighLevel.value, PriorityMessage.Danmu.value]:
+                    elif priority in [PriorityMessage.DanmuVip, PriorityMessage.DanmuExpensive,
+                            PriorityMessage.DanmuMiddle, PriorityMessage.DanmuHighLevel, PriorityMessage.Danmu]:
                         message_type = MessageEnum.ChatMessage
-                    elif i in [PriorityMessage.EnterHighLevel.value]:
+                    elif priority in [PriorityMessage.EnterHighLevel]:
                         message_type = MessageEnum.EnterMessage
-                    elif i in [PriorityMessage.Like.value]:
+                    elif priority in [PriorityMessage.Like]:
                         message_type = MessageEnum.LikeMessage
                     else:
                         logging.warning("get_message：不存在的消息类型")
                         return None, None, None
-                    return i, message_type, message
+                    return int(priority), message_type, message
 
         return None, None, None
+    
+    # def get_message_single_list(self, priority, message_list, message_lock):
+    #     if priority == PriorityMessage.InsertPriority:
+    #         if self._insert_timer.toc() >= 3*60:
+    #             with self._like_lock:
+    #                 message = self._like_list.pop() if len(self._like_list) > 0 else None
+    #                 self._like_list.clear()
+    #             message_type = MessageEnum.InsertMessage
+
+    #             self._insert_timer.tic()
+    #             return priority, message_type, message
+
+    #     # 其他消息
+    #     else:
+    #         message = self.get_list(message_list, message_lock)
+    #         if message:
+    #             if priority in [PriorityMessage.GiftVip.value, PriorityMessage.GiftExpensive.value,
+    #                     PriorityMessage.GiftMiddle.value, PriorityMessage.GiftSmall.value]:
+    #                 message_type = MessageEnum.GiftMessage
+    #             elif priority in [PriorityMessage.DanmuVip.value, PriorityMessage.DanmuExpensive.value,
+    #                     PriorityMessage.DanmuMiddle.value, PriorityMessage.DanmuHighLevel.value, PriorityMessage.Danmu.value]:
+    #                 message_type = MessageEnum.ChatMessage
+    #             elif priority in [PriorityMessage.EnterHighLevel.value]:
+    #                 message_type = MessageEnum.EnterMessage
+    #             elif priority in [PriorityMessage.Like.value]:
+    #                 message_type = MessageEnum.LikeMessage
+    #             else:
+    #                 logging.warning("get_message：不存在的消息类型")
+    #                 return None, None, None
+    #             return priority, message_type, message
