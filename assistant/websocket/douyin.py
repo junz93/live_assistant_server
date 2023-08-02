@@ -58,7 +58,8 @@ class DouyinLiveHandler:
             self._sendAck(ws, logId, payloadPackage.internalExt)
         for msg in payloadPackage.messagesList:
             if msg.method == 'WebcastLikeMessage':
-                self._unPackWebcastLikeMessage(msg.payload)
+                # self._unPackWebcastLikeMessage(msg.payload)
+                pass
             elif msg.method == 'WebcastMemberMessage':
                 self._unPackWebcastMemberMessage(msg.payload)
             elif msg.method == 'WebcastGiftMessage':

@@ -13,6 +13,7 @@ from . import message as message_utils
 from . import sqlite_conn
 from .common_enum import MessageEnum, PriorityMessage
 from .gol import Gol
+from .message import get_user_level
 
 # danmu_file = open('./logs/danmu.json', 'a', encoding='utf-8')
 # gift_file = open('./logs/gift.json', 'a', encoding='utf-8')
@@ -61,7 +62,7 @@ class MessageHandler:
                 'reply': answer,
             }
             self.danmu_consumer.send(text_data=json.dumps(json_data, ensure_ascii=False))
-            logging.info(f'Sent message to WS client: {json.dumps(json_data, ensure_ascii=False)}')
+            logging.debug(f'Sent message to WS client: {json.dumps(json_data, ensure_ascii=False)}')
 
             user_priority = self.gol.get_user_priority(chat_message.common.roomId, chat_message.user)
             if user_priority <= 5 or user_priority == 7:
@@ -81,25 +82,25 @@ class MessageHandler:
 
 
     def _deal_gift(self, message_priority, gift_message):
-        start_time = time.time()
+        # start_time = time.time()
         try:
             logging.info(f"\t处理礼物中：{gift_message.common.describe}，线程id：{threading.get_ident()}，各优先级消息还剩余：{self.gol.get_all_list_num()}")
-            user_name = gift_message.user.nickName
-            gift_name = "{}个".format(gift_message.totalCount if gift_message.totalCount else "1") + gift_message.gift.describe.strip("送出")
+            # user_name = gift_message.user.nickName
+            # gift_name = "{}个".format(gift_message.totalCount if gift_message.totalCount else "1") + gift_message.gift.describe.strip("送出")
 
-            if message_priority == PriorityMessage.GiftVip.value:
-                gift_describe_template = random.choice(message_describe['vip_gift'])
-            elif message_priority == PriorityMessage.GiftExpensive.value:
-                gift_describe_template = random.choice(message_describe['expensive_gift'])
-            elif message_priority == PriorityMessage.GiftMiddle.value:
-                gift_describe_template = random.choice(message_describe['middle_gift'])
-            elif message_priority == PriorityMessage.GiftSmall.value:
-                gift_describe_template = random.choice(message_describe['small_gift'])
-            else:
-                logging.warning("当前礼物优先级不存在")
-                return
+            # if message_priority == PriorityMessage.GiftVip.value:
+            #     gift_describe_template = random.choice(message_describe['vip_gift'])
+            # elif message_priority == PriorityMessage.GiftExpensive.value:
+            #     gift_describe_template = random.choice(message_describe['expensive_gift'])
+            # elif message_priority == PriorityMessage.GiftMiddle.value:
+            #     gift_describe_template = random.choice(message_describe['middle_gift'])
+            # elif message_priority == PriorityMessage.GiftSmall.value:
+            #     gift_describe_template = random.choice(message_describe['small_gift'])
+            # else:
+            #     logging.warning("当前礼物优先级不存在")
+            #     return
 
-            gift_describe = gift_describe_template.format(user_name=user_name, gift_name=gift_name)
+            # gift_describe = gift_describe_template.format(user_name=user_name, gift_name=gift_name)
 
             gift_time = int(str(gift_message.sendTime)[:10])  # 异常：保留前10位
             json_data = {
@@ -111,10 +112,11 @@ class MessageHandler:
                 # 'count': gift_message.repeatCount,
                 # 'count': gift_message.totalCount if gift_message.totalCount else 1,
                 'unitPrice': gift_message.gift.diamondCount * 10,  # Unit of price: cent
-                'reply': gift_describe,
+                'allTimeAmount': self.gol.get_history_user_gift(gift_message.common.roomId, gift_message.user.id) * 10,
+                # 'reply': gift_describe,
             }
             self.danmu_consumer.send(text_data=json.dumps(json_data, ensure_ascii=False))
-            logging.info(f'Sent message to WS client: {json.dumps(json_data, ensure_ascii=False)}')
+            logging.debug(f'Sent message to WS client: {json.dumps(json_data, ensure_ascii=False)}')
 
             # if gift_file is not None:
             #     msg = json.dumps({
@@ -128,49 +130,50 @@ class MessageHandler:
             #     gift_file.write(f'{msg}\n')
             #     gift_file.flush()
         except Exception as e:
-            logging.exception(f"生成礼物回复出错，输入：{gift_describe}")
-            # traceback.print_exc()
+            logging.exception(f"生成礼物回复出错")
 
 
-    # def _deal_enter(self, message_priority, member_message):
-    #     try:
-    #         room_id = member_message.common.roomId
-    #         user_priority = gol.get_user_priority(room_id, member_message.user)
-    #         enter_message = random.choice(message_describe[f"enter_level{user_priority}"])
+    def _deal_enter(self, message_priority, member_message):
+        try:
+            room_id = member_message.common.roomId
+            user_priority = self.gol.get_user_priority(room_id, member_message.user)
+            # enter_message = random.choice(message_describe[f"enter_level{user_priority}"])
 
-    #         logging.info(f"\t处理进入直播间观众消息中，用户名：{member_message.user.nickName}, 等级:{user_priority}，线程id：{threading.get_ident()}，各优先级消息还剩余：{gol.get_all_list_num()}")
+            logging.info(f"\t处理进入直播间观众消息中，用户名：{member_message.user.nickName}, 等级:{user_priority}，线程id：{threading.get_ident()}，各优先级消息还剩余：{self.gol.get_all_list_num()}")
 
-    #         member_message.user.nickName = message_utils.filer_nickname(member_message.user.nickName)
-    #         enter_describe = enter_message.format(user_name=member_message.user.nickName)
+            member_message.user.nickName = message_utils.filer_nickname(member_message.user.nickName)
+            # enter_describe = enter_message.format(user_name=member_message.user.nickName)
 
-    #         generate_time = time.time()
-    #         get_wav(
-    #             f"{enter_wav_dir}/{str(message_priority).zfill(2)}_{generate_time}/{str(message_priority).zfill(2)}_{generate_time}_000.wav",
-    #             enter_describe)
+            # TODO: 重要观众信息
+            json_data = {
+                'type': 'VIP_USER',
+                # 'time': member_message.common.createTime,
+                'time': int(time.time()),
+                'userNickName': member_message.user.nickName,
+                'userLevel': get_user_level(member_message.user),
+                'allTimeAmount': self.gol.get_history_user_gift(room_id, member_message.user.id) * 10,
+            }
+            self.danmu_consumer.send(text_data=json.dumps(json_data, ensure_ascii=False))
+            logging.debug(f'Sent message to WS client: {json.dumps(json_data, ensure_ascii=False)}')
 
-    #         if enter_file is not None:  # 多线程写入？
-    #             msg = json.dumps({
-    #                 'generate_time': datetime.datetime.fromtimestamp(generate_time).isoformat(),
-    #                 'user_id': member_message.user.id,
-    #                 'nickName': member_message.user.nickName,
-    #                 'room_id': member_message.common.roomId,
-    #                 'describe': enter_describe,
-    #             }, ensure_ascii=False)
-    #             enter_file.write(f'{msg}\n')
-    #             enter_file.flush()
+            # generate_time = time.time()
+            # get_wav(
+            #     f"{enter_wav_dir}/{str(message_priority).zfill(2)}_{generate_time}/{str(message_priority).zfill(2)}_{generate_time}_000.wav",
+            #     enter_describe)
 
-    #     except Exception as e:
-    #         logging.exception(f"生成进入直播间回复出错，输入：{enter_describe}\n异常：{e}")
-    #         traceback.print_exc()
-    #     finally:
-    #         ready_file = f"{enter_wav_dir}/{str(message_priority).zfill(2)}_{generate_time}/{str(message_priority).zfill(2)}_{generate_time}_ready"
-    #         try:
-    #             if not os.path.exists(os.path.split(ready_file)[0]):
-    #                 os.makedirs(os.path.split(ready_file)[0], exist_ok=True)
-    #             open(ready_file, 'x').close()
-    #             logging.info(f"进入直播间消息:{enter_describe} 回复生成完成：{ready_file}")
-    #         except Exception as e:
-    #             traceback.print_exc()
+            # if enter_file is not None:  # 多线程写入？
+            #     msg = json.dumps({
+            #         'generate_time': datetime.datetime.fromtimestamp(generate_time).isoformat(),
+            #         'user_id': member_message.user.id,
+            #         'nickName': member_message.user.nickName,
+            #         'room_id': member_message.common.roomId,
+            #         'describe': enter_describe,
+            #     }, ensure_ascii=False)
+            #     enter_file.write(f'{msg}\n')
+            #     enter_file.flush()
+
+        except Exception as e:
+            logging.exception(f"生成进入直播间回复出错")
 
 
     # def _deal_like(self, message_priority, like_message):
@@ -267,11 +270,11 @@ class MessageHandler:
                     self._deal_gift(message_priority, message)
                 elif message_type == MessageEnum.ChatMessage:
                     self._deal_danmu(message_priority, message)
-                # elif message_type == MessageEnum.EnterMessage:
-                #     self._deal_enter(message_priority, message)
+                elif message_type == MessageEnum.EnterMessage:
+                    self._deal_enter(message_priority, message)
                 # elif message_type == MessageEnum.LikeMessage:
                 #     self._deal_like(message_priority, message)
-                time.sleep(1)
+                time.sleep(0.5)
             except Exception as e:
                 logging.error(f"Failed to handle message", exc_info=True)
 

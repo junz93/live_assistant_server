@@ -88,6 +88,7 @@ LOGGING = {
         }
     },
     'root': {
+        # 'level': 'DEBUG' if DEBUG else 'INFO',
         'level': 'INFO',
         'handlers': ['console'],
     },

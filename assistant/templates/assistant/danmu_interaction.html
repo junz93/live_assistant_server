@@ -19,13 +19,19 @@
       </div>
       <button type="button" class="btn btn-primary mb-4" id="start-listening">开始</button>
 
-      <div class="row">
-        <div class="col-6 border border-3">
-          <h2>礼物消息</h2>
-          <div id="gift-messages"></div>
+      <div class="row mb-3">
+        <div class="col-6">
+          <div class="mb-3 border border-3">
+            <h3>礼物消息</h3>
+            <div id="gift-messages"></div>
+          </div>
+          <div class="border border-3">
+            <h3>重要观众消息</h3>
+            <div id="vip-user-messages"></div>
+          </div>
         </div>
         <div class="col-6 border border-3">
-          <h2>AI弹幕回复提示</h2>
+          <h3>AI弹幕回复提示</h3>
           <div id="chat-messages"></div>
         </div>
       </div>
@@ -61,6 +67,10 @@
               case 'GIFT':
                 $messageItem.addClass('gift-message mb-2');
                 $('#gift-messages').append($messageItem);
+                break;
+              case 'VIP_USER':
+                $messageItem.addClass('vip-user-message mb-2');
+                $('#vip-user-messages').append($messageItem);
                 break;
               case 'DANMU':
                 $messageItem.addClass('chat-message mb-2');
