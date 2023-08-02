@@ -236,6 +236,9 @@ class Gol:
 
 
     def add_danmu_list(self, chat_message):
+        if len(chat_message.content.strip()) < 5:
+            logging.info(f"\t弹幕长度小于5，跳过 -- {chat_message.user.nickName}: {chat_message.content}")
+            return
         # 不包含中文
         if not message.is_contains_chinese(chat_message.content):
             logging.info(f"\t弹幕不含中文，跳过 -- {chat_message.user.nickName}: {chat_message.content}")
