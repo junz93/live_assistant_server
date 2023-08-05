@@ -15,7 +15,7 @@ def get_answer(request: HttpRequest):
             request.session.create()
 
         response = {
-            'anwser': gpt.get_answer(question, request.session.session_key, event_time=int(time.time()), censor_text=False),
+            'anwser': gpt.get_answer(question, request.session.session_key, event_time=int(time.time()), with_censorship=False),
         }
         if settings.DEBUG == True:
             response['session_id'] = request.session.session_key

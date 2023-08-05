@@ -1,8 +1,8 @@
 from datetime import date
 from django.db import models
 from django.forms import ModelForm
+from user.models import User
 
-# Create your models here.
 class Character(models.Model):
     MALE = 'M'
     FEMALE = 'F'
@@ -30,6 +30,7 @@ class Character(models.Model):
 
     # id = models.AutoField(primary_key=True)
     # user_id = models.ForeignKey()
+    user = models.ForeignKey('user.User', on_delete=models.CASCADE)
     name = models.CharField(max_length=20)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
     role = models.CharField(max_length=50, choices=ROLE_CHOICES)
@@ -49,9 +50,10 @@ class Character(models.Model):
     personal_statement = models.TextField(max_length=400, null=True, blank=True)
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: dict, user: User):
         character = cls()
         character.copy_from_dict(data)
+        character.user = user
         return character
 
     def copy_from_dict(self, data: dict):
@@ -96,3 +98,28 @@ class Character(models.Model):
 #         model = Character
 #         fields = '__all__'
 #         # exclude = []
+
+class Script(models.Model):
+    user = models.ForeignKey('user.User', on_delete=models.CASCADE)
+    title = models.CharField(max_length=100)
+    content = models.TextField()
+    created_datetime = models.DateTimeField(auto_now_add=True, editable=False)
+    updated_datetime = models.DateTimeField(auto_now=True, editable=False)
+
+    @classmethod
+    def from_dict(cls, data: dict, user: User):
+        script = cls()
+        script.copy_from_dict(data)
+        script.user = user
+        return script
+
+    def copy_from_dict(self, data: dict):
+        self.title = data.get('title')
+        self.content = data.get('content')
+
+    def to_dict(self) -> dict:
+        return {
+            'id': self.pk,
+            'title': self.title,
+            'content': self.content,
+        }

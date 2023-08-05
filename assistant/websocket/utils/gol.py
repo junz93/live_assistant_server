@@ -96,11 +96,18 @@ class Gol:
         self.gift_message_locks = [self._gift_vip_lock, self._gift_expensive_lock, self._gift_middle_lock, self._gift_small_lock]
         self.gift_message_priorities = [PriorityMessage.GiftVip, PriorityMessage.GiftExpensive, PriorityMessage.GiftMiddle, PriorityMessage.GiftSmall]
 
-        self.danmu_message_lists = [self._danmu_vip_list, self._enter_highlevel_list, self._danmu_expensive_list, self._danmu_middle_list, self._danmu_highlevel_list, self._danmu_list]
-        self.danmu_message_locks = [self._danmu_vip_lock, self._enter_highlevel_lock, self._danmu_expensive_lock, self._danmu_middle_lock, self._danmu_highlevel_lock, self._danmu_lock]
-        self.danmu_message_priorities = [PriorityMessage.DanmuVip, PriorityMessage.EnterHighLevel, PriorityMessage.DanmuExpensive, PriorityMessage.DanmuMiddle, PriorityMessage.DanmuHighLevel, PriorityMessage.Danmu]
+        self.danmu_message_lists = [self._danmu_vip_list, self._danmu_expensive_list, self._danmu_middle_list, self._danmu_highlevel_list, self._danmu_list]
+        self.danmu_message_locks = [self._danmu_vip_lock, self._danmu_expensive_lock, self._danmu_middle_lock, self._danmu_highlevel_lock, self._danmu_lock]
+        self.danmu_message_priorities = [PriorityMessage.DanmuVip, PriorityMessage.DanmuExpensive, PriorityMessage.DanmuMiddle, PriorityMessage.DanmuHighLevel, PriorityMessage.Danmu]
 
-        self.gift_prioritized = True
+        self.enter_message_lists = [self._enter_highlevel_list]
+        self.enter_message_locks = [self._enter_highlevel_lock]
+        self.enter_message_priorities = [PriorityMessage.EnterHighLevel]
+
+        self.all_message_list_lists = [self.gift_message_lists, self.danmu_message_lists, self.enter_message_lists]
+        self.all_message_lock_lists = [self.gift_message_locks, self.danmu_message_locks, self.enter_message_locks]
+        self.all_message_priority_lists = [self.gift_message_priorities, self.danmu_message_priorities, self.enter_message_priorities]
+        self.current_list_index = 0
 
         # global message_lock
         self.message_lock = [self._insert_lock, self._gift_vip_lock, self._gift_expensive_lock, self._danmu_vip_lock, self._enter_highlevel_lock, self._gift_middle_lock,
@@ -331,10 +338,15 @@ class Gol:
 
 
     def get_message(self):
-        msg_priorities = self.gift_message_priorities if self.gift_prioritized else self.danmu_message_priorities
-        msg_lists = self.gift_message_lists if self.gift_prioritized else self.danmu_message_lists
-        msg_locks = self.gift_message_locks if self.gift_prioritized else self.danmu_message_locks
-        self.gift_prioritized = not self.gift_prioritized
+        msg_priorities = self.all_message_priority_lists[self.current_list_index]
+        msg_lists = self.all_message_list_lists[self.current_list_index]
+        msg_locks = self.all_message_lock_lists[self.current_list_index]
+        self.current_list_index = (self.current_list_index + 1) % len(self.all_message_priority_lists)
+
+        # msg_priorities = self.gift_message_priorities if self.gift_prioritized else self.danmu_message_priorities
+        # msg_lists = self.gift_message_lists if self.gift_prioritized else self.danmu_message_lists
+        # msg_locks = self.gift_message_locks if self.gift_prioritized else self.danmu_message_locks
+        # self.gift_prioritized = not self.gift_prioritized
 
         # for priority, (_list, _lock) in enumerate(zip(self.message_list, self.message_lock)):
         for priority, _list, _lock in zip(msg_priorities, msg_lists, msg_locks):

@@ -1,5 +1,6 @@
 alibabacloud_green20220302==1.0.5
 alibabacloud_tea_openapi==0.3.7
+argon2-cffi==21.3.0
 channels==4.0.0
 daphne==4.0.0
 Django==4.2.3

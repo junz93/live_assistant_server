@@ -14,14 +14,15 @@ class DanmuInteractionConsumer(WebsocketConsumer):
         # super().__init__(*args, **kwargs)
 
     def connect(self):
+        self.closed = False
+
         self.accept()
         logging.info('Websocket connection opened with client (browser)')
 
+        # print(self.scope.user)
         path_params = self.scope['url_route']['kwargs']
         query_params = parse_qs(self.scope['query_string'].decode(encoding='utf-8'))
 
-        print(query_params)
-        
         if 'platform' not in path_params \
             or 'room_id' not in path_params \
             or 'character_id' not in query_params:
@@ -54,6 +55,7 @@ class DanmuInteractionConsumer(WebsocketConsumer):
     def disconnect(self, code):
         logging.info(f'DanmuInteractionConsumer disconnected with code: {code}')
         # TODO: Cleanup
+        self.closed = True
         if (self.live_handler):
             self.live_handler.close()
 
@@ -66,6 +68,8 @@ class DanmuInteractionConsumer(WebsocketConsumer):
 
     def _monitor_ping(self):
         while True:
+            if self.closed:
+                break
             if (time.time() - self.last_ping_time >= 40):
                 # TODO: Cleanup
                 # self.live_handler.close()

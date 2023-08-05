@@ -51,6 +51,7 @@
           alert('Empty room ID!');
         } else {
           const socket = new WebSocket(`ws://${window.location.host}/ws/assistant/live_prompt/douyin/${roomId}?character_id=${characterId}`);
+          // const socket = new WebSocket(`ws://101.132.156.207:8080/ws/assistant/live_prompt/douyin/${roomId}?character_id=${characterId}`);
           
           socket.onopen = function(e) {
             console.log(`Websocket connection opened. Event: ${JSON.stringify(e)}`);

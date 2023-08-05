@@ -156,8 +156,17 @@ PROMPT_END = ["欢迎大家在弹幕中继续和我互动。好的，让我们�
 # init_embedding()
 history_danmu = defaultdict(list)
 
+def get_script(description: str, with_censorship=True, character: Character = None):
+    prompt_prefix = '请根据以下内容生成一份讲稿：'
+    return get_answer(
+        f'{prompt_prefix}\n{description}', 
+        user_id=None, 
+        event_time=int(time.time()),
+        with_censorship=with_censorship,
+        character=character
+    )
 
-def get_answer(question: str, user_id: str, event_time: int, censor_text=True, character: Character = None) -> str:
+def get_answer(question: str, user_id: str, event_time: int, with_censorship=True, character: Character = None) -> str:
     try:
         start_time = time.time()
         # question = chatMessage.content
@@ -268,9 +277,10 @@ def get_answer(question: str, user_id: str, event_time: int, censor_text=True, c
         prompt += renshe
         message = [{'role': 'system', 'content': prompt}]
         # 补充历史提问记录
-        for q_a in history_danmu[user_id]:
-            message.append({'role': 'user', 'content': q_a[1]})
-            message.append({'role': 'assistant', 'content': q_a[2]})
+        if user_id:
+            for q_a in history_danmu[user_id]:
+                message.append({'role': 'user', 'content': q_a[1]})
+                message.append({'role': 'assistant', 'content': q_a[2]})
         message.append({'role': 'user', 'content': question + '。'})
 
         response = openai.ChatCompletion.create(
@@ -298,7 +308,7 @@ def get_answer(question: str, user_id: str, event_time: int, censor_text=True, c
             c_i = max([texts.rfind(x) for x in charector]) + 1
             if texts and (c_i >= 20 or event["choices"][0]["finish_reason"] == "stop"):
                 gpt_time_list.append(datetime.fromtimestamp(round(time.time())).isoformat())
-                if censor_text and (not content_censorship.check_text(texts)):
+                if with_censorship and (not content_censorship.check_text(texts)):
                     break
                 c_i = c_i if c_i >= 20 else len(texts)
                 # bad_words = ["下次", "再见", "下期", "拜拜", "谢谢大家收看", "结束", "收看"]
@@ -311,12 +321,13 @@ def get_answer(question: str, user_id: str, event_time: int, censor_text=True, c
                 texts = texts[c_i+1:] if c_i < len(texts) else ""
 
         # 超过5分钟为互动删除
-        if history_danmu[user_id] and time.time() - float(history_danmu[user_id][-1][0]) > 5*60:
-            history_danmu.pop(user_id)
-        # 每位用户只保留最近的5条互动
-        if len(history_danmu[user_id]) >= 2:
-            history_danmu[user_id].pop(0)
-        history_danmu[user_id].append((event_time, question, ori_answer))
+        if user_id:
+            if history_danmu[user_id] and time.time() - float(history_danmu[user_id][-1][0]) > 5*60:
+                history_danmu.pop(user_id)
+            # 每位用户只保留最近的5条互动
+            if len(history_danmu[user_id]) >= 2:
+                history_danmu[user_id].pop(0)
+            history_danmu[user_id].append((event_time, question, ori_answer))
         
         return ori_answer
     
