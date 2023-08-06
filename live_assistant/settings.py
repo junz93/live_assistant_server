@@ -140,12 +140,13 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-SESSION_COOKIE_SAMESITE = 'None'
+# SESSION_COOKIE_SAMESITE = 'None'
 
 if DEBUG:
     # CORS_ALLOW_ALL_ORIGINS = True
     CORS_ALLOWED_ORIGINS = [
-        'http://ai.zabol.life:9528'
+        # 'http://ai.zabol.life:9528',
+        'http://101.132.156.207:9528',
     ]
     CORS_ALLOW_CREDENTIALS = True
 else:
