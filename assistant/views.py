@@ -98,7 +98,7 @@ def generate_answer_as_character(request: HttpRequest, character_id: int):
         response = {
             'answer': gpt.get_answer(
                 question, 
-                f'user_{1}', 
+                f'user_{request.user.id}', 
                 int(time.time()), 
                 with_censorship=False, 
                 character=character
