@@ -153,10 +153,10 @@ if DEBUG:
 
     CORS_ALLOW_CREDENTIALS = True
     
-    # CSRF_TRUSTED_ORIGINS = [
-    #     'http://101.132.156.207:9528',
-    #     'http://47.103.50.65:9528',
-    # ]
+    CSRF_TRUSTED_ORIGINS = [
+        'http://101.132.156.207:9528',
+        'http://47.103.50.65:9528',
+    ]
 else:
     # TODO: set CORS headers for only required endpoints
     pass
