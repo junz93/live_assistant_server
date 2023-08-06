@@ -140,11 +140,14 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+SESSION_COOKIE_SAMESITE = 'None'
+
 if DEBUG:
     # CORS_ALLOW_ALL_ORIGINS = True
     CORS_ALLOWED_ORIGINS = [
         'http://ai.zabol.life:9528'
     ]
+    CORS_ALLOW_CREDENTIALS = True
 else:
     # TODO: set CORS headers for only required endpoints
     pass
