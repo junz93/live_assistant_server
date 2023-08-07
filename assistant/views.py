@@ -101,7 +101,8 @@ def generate_answer_as_character(request: HttpRequest, character_id: int):
                 f'user_{request.user.id}', 
                 int(time.time()), 
                 with_censorship=False, 
-                character=character
+                character=character,
+                mode=gpt.AnswerMode.CHAT,
             )
         }
 
@@ -121,10 +122,13 @@ def generate_script_as_character(request: HttpRequest, character_id: int):
     try:
         character = Character.objects.get(id=character_id, user_id=request.user.id)
         response = {
-            'script': gpt.get_script(
+            'script': gpt.get_answer(
                 description, 
+                None,
+                int(time.time()),
                 with_censorship=False, 
-                character=character
+                character=character,
+                mode=gpt.AnswerMode.SCRIPT,
             )
         }
 

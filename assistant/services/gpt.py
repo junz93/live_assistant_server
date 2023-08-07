@@ -156,17 +156,12 @@ PROMPT_END = ["欢迎大家在弹幕中继续和我互动。好的，让我们�
 # init_embedding()
 history_danmu = defaultdict(list)
 
-def get_script(description: str, with_censorship=True, character: Character = None):
-    prompt_prefix = '请根据以下内容生成一份讲稿：'
-    return get_answer(
-        f'{prompt_prefix}\n{description}', 
-        user_id=None, 
-        event_time=int(time.time()),
-        with_censorship=with_censorship,
-        character=character
-    )
+class AnswerMode:
+    LIVER = 'LIVER'
+    SCRIPT = 'SCRIPT'
+    CHAT = 'CHAT'
 
-def get_answer(question: str, user_id: str, event_time: int, with_censorship=True, character: Character = None) -> str:
+def get_answer(question: str, user_id: str, event_time: int, with_censorship=True, character: Character = None, mode: str = AnswerMode.LIVER) -> str:
     try:
         start_time = time.time()
         # question = chatMessage.content
@@ -265,12 +260,30 @@ def get_answer(question: str, user_id: str, event_time: int, with_censorship=Tru
             if character.personal_statement:
                 renshe_optional += f'{character.personal_statement}\n'
 
-            renshe = f"""
-            你的名字是{character.name}，是一名{character.get_role_display()}{character.get_gender_display()}主播，现在正在直播间进行直播，直播间的主题是{character.topic}。
-            {renshe_optional}
-            观众通过评论向你提问，请回复观众的提问。
-            回答要符合主播的身份，尽量简洁，内容不超过 200 字符。
-            """
+            if mode == AnswerMode.SCRIPT:
+                renshe = f"""
+                你的名字是{character.name}，是一名{character.get_role_display()}{character.get_gender_display()}主播，现在正在直播间进行直播，直播间的主题是{character.topic}。
+                {renshe_optional}
+                """
+
+                question = f"""
+                请撰写一篇直播讲稿，内容梗概为{question}。
+                讲稿要符合主播的身份，适合直播的场景使用，讲稿字符数要超过900字。
+                请不要出现'下次直播再见'等类似含义的表达。
+                """
+            elif mode == AnswerMode.CHAT:
+                renshe = f"""
+                你的名字是{character.name}，是一名{character.get_role_display()}{character.get_gender_display()}主播的助理，直播间的主题是{character.topic}。
+                {renshe_optional}
+                请回复主播的提问，回答要符合身份，简洁，内容不超过200个字符。
+                """
+            else:
+                renshe = f"""
+                你的名字是{character.name}，是一名{character.get_role_display()}{character.get_gender_display()}主播，现在正在直播间进行直播，直播间的主题是{character.topic}。
+                {renshe_optional}
+                观众通过评论向你提问，请回复观众的提问。
+                回答要符合主播的身份，尽量简洁，内容不超过200个字符。
+                """
 
         # logging.info(f'人设：\n{renshe}')
 

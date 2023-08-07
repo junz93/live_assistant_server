@@ -1,7 +1,7 @@
 from datetime import date
 from django.db import models
-from django.forms import ModelForm
-from user.models import User
+# from django.forms import ModelForm
+# from user.models import User
 
 class Character(models.Model):
     MALE = 'M'
@@ -50,7 +50,7 @@ class Character(models.Model):
     personal_statement = models.TextField(max_length=400, null=True, blank=True)
 
     @classmethod
-    def from_dict(cls, data: dict, user: User):
+    def from_dict(cls, data: dict, user):
         character = cls()
         character.copy_from_dict(data)
         character.user = user
@@ -107,7 +107,7 @@ class Script(models.Model):
     updated_datetime = models.DateTimeField(auto_now=True, editable=False)
 
     @classmethod
-    def from_dict(cls, data: dict, user: User):
+    def from_dict(cls, data: dict, user):
         script = cls()
         script.copy_from_dict(data)
         script.user = user
