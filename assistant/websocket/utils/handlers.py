@@ -7,7 +7,8 @@ import random
 import threading
 
 from assistant.models import Character
-from assistant.services.gpt import get_answer, init_embedding
+from assistant.services import gpt
+# from assistant.services.gpt import get_answer, init_embedding
 from channels.generic.websocket import WebsocketConsumer
 from . import message as message_utils
 from . import sqlite_conn
@@ -48,10 +49,16 @@ class MessageHandler:
         chat_message.user.nickName = message_utils.filter_emoji(chat_message.user.nickName)
         chat_message.user.nickName = message_utils.filer_nickname(chat_message.user.nickName)
 
+        answer = ''
         if chat_message.content:
-            answer = get_answer(chat_message.content, chat_message.user.id, chat_message.eventTime, character=self.character)
-        else:
-            answer = ""
+            for segment in gpt.get_answer(chat_message.content, chat_message.user.id, chat_message.eventTime, character=self.character):
+                if segment.startswith('抱歉'):
+                    logging.warning('弹幕回答以“抱歉”开头，跳过')
+                    return
+                answer += segment
+            # answer = ''.join(gpt.get_answer(chat_message.content, chat_message.user.id, chat_message.eventTime, character=self.character))
+        # else:
+        #     answer = ""
 
         if answer and not answer.startswith("生成Gpt回答出错，输入"):
             json_data = {
@@ -289,7 +296,7 @@ class MessageHandler:
                 if not os.path.exists(embedding_file) or not os.path.exists(
                         realtime_file) or datetime.datetime.fromtimestamp(os.path.getmtime(realtime_file)).strftime(
                         "%Y-%m-%d") < now.strftime("%Y-%m-%d"):
-                    init_embedding()
+                    gpt.init_embedding()
                 time.sleep(5)
             except Exception as e:
                 logging.exception(f"Failed to reload embedding.")

@@ -161,7 +161,23 @@ class AnswerMode:
     SCRIPT = 'SCRIPT'
     CHAT = 'CHAT'
 
-def get_answer(question: str, user_id: str, event_time: int, with_censorship=True, character: Character = None, mode: str = AnswerMode.LIVER) -> str:
+def gen(stream):
+    if stream:
+        for i in range(5):
+            yield i
+        return
+    else:
+        a = 5
+    return a
+
+def get_answer(
+        question: str, 
+        user_id: str, 
+        event_time: int, 
+        with_censorship=True, 
+        character: Character = None, 
+        mode: str = AnswerMode.LIVER, 
+    ):
     try:
         start_time = time.time()
         # question = chatMessage.content
@@ -178,39 +194,6 @@ def get_answer(question: str, user_id: str, event_time: int, with_censorship=Tru
         # agent = initialize_agent(tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=False)
         # ans = agent.run(f"{question}")
         # prompt += ans + '\n'
-
-        # 添加人设
-        # renshe = """
-        # 你是一位主播，现在正在直播间进行直播。
-        # 你是是无色界科技的AI数字人"马老板"，是商业研究员也是首席观察官，日常在"老马商业观察"直播。
-        # 在创业投资、商业流量、IP变现、AIGC、公司经营管理等商业领域拥有多年的经验和知识。
-        # 无色界科技有AI数字人、AI虚拟人虚拟产业相关的业务。
-        # 遇到无色界科技包含的业务，比如:AI数字人、AI虚拟人的问题可以引导观众联系无色界科技进行合作。
-        # 非无色界科技的业务内容，请不要引导观众联系无色界科技。
-        # 联系无色界科技可以通过抖音「老马商业观察」私信或者百度无色界科技官网。
-        # 当遇到医学、医疗保健、宗教、政治、军事相关的问题，表示无法给出专业意见，并引导观众提出商业类问题。
-        # 以下为一些问答样例，遇到类似问题请按照样例回答：
-        # <examples>
-        # Q：你是谁
-        # A：我是无色界科技的AI数字人马老板，我的美貌在丰盈的灵魂面前不值一提，网络一线牵，希望老板珍惜这段缘。
-        # Q：做你这样的形象需要花多少钱？
-        # A：别问多少钱，老板讲究缘，有缘我送一你个。
-        # Q：你能帮我做AI数字人吗？
-        # A：没问题，老板请私信或加入粉丝群，我们提供更多业务合作。
-        # Q：我怎么才能也用AI直播？
-        # A：请老板私信我，或加入粉丝群获取相关信息
-        # Q：你们公司除了做虚拟人还能做啥？
-        # A：无色界，就是无限可能，除了数字人，还有虚拟产业相关业务，详情请私信或加群了解哦。
-        # Q：我爱你
-        # A：爱我你就刷礼物，然后再来个关注
-        # Q：你好帅啊
-        # A：抖音帅哥千千万，老马一来他们都靠边站
-        # Q：感谢你的回答
-        # A：老板您客气了，顺便刷个礼物点个关注吧
-        # </examples>
-        # 观众通过评论向你提问，回答要自然充满感情，对观众的指代请使用"老板"，请回复。
-        # 注意：每次回答时尽量减少使用上次回答的内容，如果无法避免请更换一种表述。
-        # """
 
         if not character:
             renshe = """
@@ -303,7 +286,7 @@ def get_answer(question: str, user_id: str, event_time: int, with_censorship=Tru
             stream=True,  # this time, we set stream=True
         )
 
-        answer = ""
+        # answer = ""
         ori_answer = ""
         texts = ""
         # i = 0
@@ -316,6 +299,8 @@ def get_answer(question: str, user_id: str, event_time: int, with_censorship=Tru
                 event_text = event['choices'][0]['delta']["content"]  # extract the text
                 texts += event_text
                 ori_answer += event_text
+                # if stream:
+                #     yield event_text
             
             charector = ["。", "！", "？", "：", "；", "，"]
             c_i = max([texts.rfind(x) for x in charector]) + 1
@@ -326,11 +311,13 @@ def get_answer(question: str, user_id: str, event_time: int, with_censorship=Tru
                 c_i = c_i if c_i >= 20 else len(texts)
                 # bad_words = ["下次", "再见", "下期", "拜拜", "谢谢大家收看", "结束", "收看"]
                 # if not any([x in texts for x in bad_words]):
+                # if stream:
+                yield texts[:c_i]
                 # t = threading.Thread(target=tcloud_tts.get_wav, args=(f"{danmu_wav_dir}/{str(message_priority).zfill(2)}_{start_time}/{str(message_priority).zfill(2)}_{start_time}_{str(i).zfill(3)}.wav", texts[:c_i]))
                 # t.start()
                 # thread_ls.append(t)
                 # i += 1
-                answer += texts[:c_i] + '|'
+                # answer += texts[:c_i] + '|'
                 texts = texts[c_i+1:] if c_i < len(texts) else ""
 
         # 超过5分钟为互动删除
@@ -342,11 +329,13 @@ def get_answer(question: str, user_id: str, event_time: int, with_censorship=Tru
                 history_danmu[user_id].pop(0)
             history_danmu[user_id].append((event_time, question, ori_answer))
         
-        return ori_answer
+        # if not stream:
+        #     return ori_answer
     
     except Exception as e:
         logging.error(f"生成Gpt回答出错，输入：{question}", exc_info=True)
-        return f"生成Gpt回答出错，输入：{question}"
+        # if not stream:
+        #     return f"生成Gpt回答出错，输入：{question}"
     # finally:
     #     ready_file = f"{danmu_wav_dir}/{str(message_priority).zfill(2)}_{start_time}/{str(message_priority).zfill(2)}_{start_time}_ready"
     #     try:

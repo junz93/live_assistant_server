@@ -8,7 +8,18 @@
   </head>
   <body>
     <div class="container">
-      <h1>AI弹幕回复</h1>
+      <h2>流式接口测试</h2>
+      <div class="mb-3">
+        <label for="query" class="form-label">Query</label>
+        <input type="text" class="form-control" id="query" required>
+      </div>
+      <div class="mb-3">
+        <label for="stream-api-result" class="form-label">Result</label>
+        <textarea class="form-control" id="stream-api-result" rows="6"></textarea>
+      </div>
+      <button type="button" class="btn btn-primary mb-4" id="start-stream">测试</button>
+
+      <h2>AI弹幕回复</h2>
       <div class="mb-3">
         <label for="room-id" class="form-label">人设ID</label>
         <input type="text" class="form-control" id="character-id" required>
@@ -39,7 +50,31 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js" integrity="sha512-3gJwYpMe3QewGELv8k/BX9vcqhryRdzRMxVfq6ngyWXwo03GFEzjsUm8Q7RZcHPHksttq7/GFoxjCVUjkjvPdw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js" integrity="sha512-VK2zcvntEufaimc+efOYi622VN5ZacdnufnmX7zIhCPmjhKnOi9ZDMtg1/ug5l183f19gG1/cBstPO4D8N/Img==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
     <script>
+      $('#start-stream').on('click', function() {
+        const characterId = 5;
+        const query = $('#query').val();
+        const url = `/stream/assistant/character/${characterId}/generate_chat?query=${query}`;
+
+        const eventSource = new EventSource(url, { withCredentials: true });
+        
+        eventSource.onmessage = function(event) {
+          console.log(event.data);
+          // console.log(`Ready state: ${eventSource.readyState}`)
+          const data = JSON.parse(event.data);
+          if (data.code) {
+            // 重要！！！若不关闭会不断重连！！！
+            eventSource.close();
+          }
+        };
+
+        eventSource.onerror = function(event) {
+          // 重要！！！若不关闭会不断重连！！！
+          eventSource.close();
+        }
+      });
+
       $('#start-listening').on('click', function() {
         let pingIntervalId = null;
 

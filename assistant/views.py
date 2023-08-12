@@ -96,14 +96,14 @@ def generate_answer_as_character(request: HttpRequest, character_id: int):
     try:
         character = Character.objects.get(id=character_id, user_id=request.user.id)
         response = {
-            'answer': gpt.get_answer(
+            'answer': ''.join(gpt.get_answer(
                 question, 
                 f'user_{request.user.id}', 
                 int(time.time()), 
                 with_censorship=False, 
                 character=character,
                 mode=gpt.AnswerMode.CHAT,
-            )
+            ))
         }
 
         return JsonResponse(response, json_dumps_params={'ensure_ascii': False})
@@ -122,14 +122,14 @@ def generate_script_as_character(request: HttpRequest, character_id: int):
     try:
         character = Character.objects.get(id=character_id, user_id=request.user.id)
         response = {
-            'script': gpt.get_answer(
+            'script': ''.join(gpt.get_answer(
                 description, 
                 None,
                 int(time.time()),
                 with_censorship=False, 
                 character=character,
                 mode=gpt.AnswerMode.SCRIPT,
-            )
+            ))
         }
 
         return JsonResponse(response, json_dumps_params={'ensure_ascii': False})

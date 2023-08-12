@@ -1,15 +1,21 @@
+# import asgiref.sync
+import asyncio
 import json
 import logging
 import threading
 import time
 
+from asgiref.sync import sync_to_async
 from assistant.models import Character
+from assistant.services import gpt
+from channels.db import database_sync_to_async
+from channels.generic.http import AsyncHttpConsumer
 from channels.generic.websocket import WebsocketConsumer
 from urllib.parse import parse_qs
 from .douyin import DouyinLiveHandler
-from .utils.handlers import MessageHandler
+# from .utils.handlers import MessageHandler
 
-class DanmuInteractionConsumer(WebsocketConsumer):
+class LivePromptConsumer(WebsocketConsumer):
     # def __init__(self, *args, **kwargs):
         # super().__init__(*args, **kwargs)
 
@@ -19,7 +25,11 @@ class DanmuInteractionConsumer(WebsocketConsumer):
         self.accept()
         logging.info('Websocket connection opened with client (browser)')
 
-        # print(self.scope.user)
+        user = self.scope['user']
+        if not user.is_authenticated:
+            self.close()
+        
+        # print(self.scope['user'])
         path_params = self.scope['url_route']['kwargs']
         query_params = parse_qs(self.scope['query_string'].decode(encoding='utf-8'))
 
@@ -32,11 +42,11 @@ class DanmuInteractionConsumer(WebsocketConsumer):
 
         self.platform = path_params['platform']
         self.room_id = path_params['room_id']
-        character_id = query_params['character_id'][0]
+        character_id = int(query_params['character_id'][0])
 
         try:
             self.live_handler = None
-            character = Character.objects.get(id=int(character_id))
+            character = Character.objects.get(id=character_id, user_id=user.id)
             self.live_handler = DouyinLiveHandler(self, character)
             self.live_handler.start_danmu_handler(self.room_id)
         except Exception as e:
@@ -53,7 +63,7 @@ class DanmuInteractionConsumer(WebsocketConsumer):
         threading.Thread(target=self._monitor_ping, daemon=True).start()
     
     def disconnect(self, code):
-        logging.info(f'DanmuInteractionConsumer disconnected with code: {code}')
+        logging.info(f'LivePromptConsumer disconnected with code: {code}')
         # TODO: Cleanup
         self.closed = True
         if (self.live_handler):
@@ -78,3 +88,83 @@ class DanmuInteractionConsumer(WebsocketConsumer):
                 self.close()
                 break
             time.sleep(5)
+
+def generate(end):
+    for i in range(end):
+        yield i
+
+class AiAnswerConsumer(AsyncHttpConsumer):
+    async def handle(self, body):
+        await self.send_headers(headers=[
+            (b'Cache-Control', b'no-cache'),
+            (b'Content-Type', b'text/event-stream; charset=utf-8'),
+            # (b'Transfer-Encoding', b'chunked'),
+        ])
+
+        user = self.scope['user']
+        if not user.is_authenticated:
+            await self.close(403, 'Not logged in')
+
+        path_params = self.scope['url_route']['kwargs']
+        query_params = parse_qs(self.scope['query_string'].decode(encoding='utf-8'))
+        mode = path_params['mode'].upper()
+
+        if 'character_id' not in path_params \
+            or 'query' not in query_params \
+            or (mode != gpt.AnswerMode.CHAT and mode != gpt.AnswerMode.SCRIPT):
+            await self.close(400, 'Invalid input')
+            return
+        
+        character_id = int(path_params['character_id'])
+        query = query_params['query'][0]
+
+        try:
+            character = await self.get_character(character_id, user.id)
+            # for segment in await sync_to_async(gpt.get_answer)(
+            for segment in gpt.get_answer(
+                query, 
+                f'user_{user.id}' if mode == gpt.AnswerMode.CHAT else None, 
+                int(time.time()), 
+                with_censorship=False, 
+                character=character, 
+                mode=mode
+            ):
+                if segment.startswith('生成Gpt回答出错'):
+                    await self.close(500, 'Failed to generate content')
+                    return
+                
+                logging.info('Received a segment')
+                await self.send_message(segment)
+                await asyncio.sleep(0.1)
+            
+            await self.close(200, 'Completed successfully')
+        except Character.DoesNotExist:
+            await self.close(404, f'Cannot find a character with ID {character_id}')
+        except Exception as e:
+            logging.exception('An error happened while generating content')
+            await self.close(500, 'An error happened while generating content')
+
+    @database_sync_to_async
+    def get_character(self, character_id: int, user_id: int):
+        return Character.objects.get(id=character_id, user_id=user_id)
+
+    async def send_message(
+        self, 
+        data, 
+        code: int = None, 
+        message: str = None, 
+        is_last = False
+    ):
+        json_data = { 'data': data }
+        if code is not None:
+            json_data['code'] = code
+        if message is not None:
+            json_data['message'] = message
+
+        data = json.dumps(json_data, ensure_ascii=False)
+
+        body = f'data: {data}\n\n'.encode('utf-8')
+        await self.send_body(body, more_body=(not is_last))
+    
+    async def close(self, code: int, message: str):
+        await self.send_message('', code, message, True)
