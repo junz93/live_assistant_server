@@ -21,6 +21,7 @@ class LivePromptConsumer(WebsocketConsumer):
 
     def connect(self):
         self.closed = False
+        self.live_handler = None
 
         self.accept()
         logging.info('Websocket connection opened with client (browser)')
@@ -45,7 +46,6 @@ class LivePromptConsumer(WebsocketConsumer):
         character_id = int(query_params['character_id'][0])
 
         try:
-            self.live_handler = None
             character = Character.objects.get(id=character_id, user_id=user.id)
             self.live_handler = DouyinLiveHandler(self, character)
             self.live_handler.start_danmu_handler(self.room_id)
