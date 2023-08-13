@@ -76,6 +76,11 @@ class LivePromptConsumer(WebsocketConsumer):
                 logging.info('Received ping/heartbeat message from WS client')
                 self.last_ping_time = time.time()
 
+                # Send pong message to avoid connection being closed by nginx when idle for 60s
+                # See http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_read_timeout
+                self.send(text_data=json.dumps({ 'type': 'PONG' }, ensure_ascii=False))
+
+    # TODO: probably not needed
     def _monitor_ping(self):
         while True:
             if self.closed:
