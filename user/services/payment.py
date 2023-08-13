@@ -10,6 +10,7 @@ from alipay.aop.api.util.SignatureUtils import verify_with_rsa
 from config_utils import auth_config
 from datetime import datetime, timedelta, timezone
 from django.conf import settings
+from django.http.request import QueryDict
 
 logger = logging.getLogger()
 
@@ -35,6 +36,7 @@ def desktop_web_pay():
     model.product_code = 'FAST_INSTANT_TRADE_PAY'
 
     request = AlipayTradePagePayRequest(model)
+    request.notify_url = 'http://47.103.50.65/api/payment/payment_callback'
     request.need_encrypt = True
 
     try:
@@ -46,9 +48,10 @@ def desktop_web_pay():
 def mobile_web_pay():
     pass
 
-def verify_alipay_signature(params: dict):
-    params = dict(params)
-    
+def verify_alipay_signature(params: QueryDict):
+    # params = dict(params)
+    params = params.copy()
+
     if 'sign' not in params:
         return False
     
