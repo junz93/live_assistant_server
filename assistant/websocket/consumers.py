@@ -28,8 +28,8 @@ class LivePromptConsumer(WebsocketConsumer):
         user = self.scope['user']
         if not user.is_authenticated:
             self.close()
+            return
         
-        # print(self.scope['user'])
         path_params = self.scope['url_route']['kwargs']
         query_params = parse_qs(self.scope['query_string'].decode(encoding='utf-8'))
 

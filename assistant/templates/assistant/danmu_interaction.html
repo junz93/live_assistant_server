@@ -55,7 +55,7 @@
       $('#start-stream').on('click', function() {
         const characterId = 5;
         const query = $('#query').val();
-        const url = `/stream/assistant/character/${characterId}/generate_chat?query=${query}`;
+        const url = `/api/stream/assistant/character/${characterId}/generate_chat?query=${query}`;
 
         const eventSource = new EventSource(url, { withCredentials: true });
         
@@ -85,8 +85,8 @@
         if (!roomId) {
           alert('Empty room ID!');
         } else {
-          const socket = new WebSocket(`ws://${window.location.host}/ws/assistant/live_prompt/douyin/${roomId}?character_id=${characterId}`);
-          // const socket = new WebSocket(`ws://101.132.156.207:8080/ws/assistant/live_prompt/douyin/${roomId}?character_id=${characterId}`);
+          const socket = new WebSocket(`ws://${window.location.host}/api/ws/assistant/live_prompt/douyin/${roomId}?character_id=${characterId}`);
+          // const socket = new WebSocket(`ws://47.103.50.65/api/ws/assistant/live_prompt/douyin/${roomId}?character_id=${characterId}`);
           
           socket.onopen = function(e) {
             console.log(`Websocket connection opened. Event: ${JSON.stringify(e)}`);
@@ -111,6 +111,9 @@
               case 'DANMU':
                 $messageItem.addClass('chat-message mb-2');
                 $('#chat-messages').append($messageItem);
+                break;
+              case 'PONG':
+                console.log('PONG message received');
                 break;
               default:
                 console.warn(`Unsupported message type: ${data.type}`);
