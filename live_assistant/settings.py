@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+from datetime import datetime
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -55,15 +56,15 @@ MIDDLEWARE = [
 ]
 
 PASSWORD_HASHERS = [
-    "live_assistant.hashers.CustomArgon2PasswordHasher",
-    "django.contrib.auth.hashers.Argon2PasswordHasher",
-    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
-    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
-    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
-    "django.contrib.auth.hashers.ScryptPasswordHasher",
+    'live_assistant.hashers.CustomArgon2PasswordHasher',
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    'django.contrib.auth.hashers.ScryptPasswordHasher',
 ]
 
-AUTH_USER_MODEL = "user.User"
+AUTH_USER_MODEL = 'user.User'
 
 ROOT_URLCONF = 'live_assistant.urls'
 
@@ -88,22 +89,41 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'default': {
-            'format': '%(asctime)s [%(levelname)s] %(message)s',
+            'format': '%(asctime)s [%(levelname)s] - [%(name)s] %(message)s',
             'datefmt': '%Y-%m-%d %H:%M:%S',
-        }
+        },
     },
     'handlers': {
         'console': {
             # 'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'default',
-        }
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'formatter': 'default',
+            'filename': BASE_DIR / 'logs' / f'{datetime.now().strftime("%Y%m%d-%H%M%S")}.log',
+            'encoding': 'utf-8',
+        },
+        # 'rotating_file': {
+
+        # }
     },
     'root': {
         # 'level': 'DEBUG' if DEBUG else 'INFO',
         'level': 'INFO',
-        'handlers': ['console'],
+        'handlers': ['console', 'file'],
     },
+    # 'loggers': {
+    #     'django': {
+    #         'handlers': ['file'],
+    #         'level': 'INFO',
+    #     },
+    #     'django.server': {
+    #         'handlers': ['file'],
+    #         'level': 'INFO',
+    #     },
+    # },
 }
 
 WSGI_APPLICATION = 'live_assistant.wsgi.application'
@@ -143,19 +163,20 @@ AUTH_PASSWORD_VALIDATORS = [
 # SESSION_COOKIE_SAMESITE = 'None'
 
 if DEBUG:
+    # NOTE: this is incompatible with AJAX request's credentials mode
     # CORS_ALLOW_ALL_ORIGINS = True
-    
-    CORS_ALLOWED_ORIGINS = [
-        # 'http://ai.zabol.life:9528',
-        'http://101.132.156.207:9528',
-        'http://47.103.50.65:9528',
-    ]
 
+    # Allow cross-origin request to use auth cookies/headers (credentials mode)
     CORS_ALLOW_CREDENTIALS = True
+
+    CORS_ALLOWED_ORIGINS = [
+        'http://47.103.50.65:9528',
+        'http://assistant.wusejietech.com:9528',
+    ]
     
     CSRF_TRUSTED_ORIGINS = [
-        'http://101.132.156.207:9528',
         'http://47.103.50.65:9528',
+        'http://assistant.wusejietech.com:9528',
     ]
 else:
     # TODO: set CORS headers for only required endpoints

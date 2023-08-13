@@ -1,5 +1,6 @@
 alibabacloud_green20220302==1.0.5
 alibabacloud_tea_openapi==0.3.7
+alipay-sdk-python==3.6.703
 argon2-cffi==21.3.0
 attrs==23.1.0
 channels==4.0.0

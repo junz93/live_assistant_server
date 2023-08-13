@@ -18,4 +18,5 @@ urlpatterns = [
     path('script/<int:id>/update', views.update_script),
     path('script/<int:id>/delete', views.delete_script),
     path('api/answer', apis.get_answer),
+    path('answer', apis.get_answer),
 ]
