@@ -6,7 +6,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 from datetime import date
 from .models import User
+from .services import payment
 
+import logging
 import json
 
 @csrf_exempt
@@ -89,3 +91,15 @@ def get_user_info(request: HttpRequest):
 def log_out(request: HttpRequest):
     logout(request)
     return HttpResponse()
+
+def pay_alipay(request: HttpRequest):
+    form_html = payment.desktop_web_pay()
+    return HttpResponse(form_html)
+
+@csrf_exempt
+@require_POST
+def payment_callback(request: HttpRequest):
+    params = request.POST
+    logging.info(f'Alipay notify params: {params}')
+    logging.info(f'Signature verify result: {payment.verify_alipay_signature(params)}')
+    return HttpResponse('success')
