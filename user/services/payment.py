@@ -26,17 +26,20 @@ if settings.DEBUG:
 
 alipay_client = DefaultAlipayClient(alipay_client_config, logger)
 
-def desktop_web_pay():
+def generate_order_id(prefix=''):
     dt = datetime.now(tz=timezone(timedelta(hours=8)))
+    # TODO: add some random digits to the end
+    return dt.strftime(f'{prefix}%Y%m%d%H%M%S%f')
 
+def get_alipay_payment_form_desktop_web(order_id: str, subject: str, total_amount: str):
     model = AlipayTradePagePayModel()
-    model.out_trade_no = dt.strftime('%Y%m%d%H%M%S%f')  # Example: 20230813123540433476
-    model.subject = '主播AI助手 一个月会员'
-    model.total_amount = '50.23'
+    model.out_trade_no = order_id  # Example: 20230813123540433476
+    model.subject = subject
+    model.total_amount = total_amount
     model.product_code = 'FAST_INSTANT_TRADE_PAY'
 
     request = AlipayTradePagePayRequest(model)
-    request.notify_url = 'http://47.103.50.65/api/payment/payment_callback'
+    request.notify_url = 'http://assistant.wusejietech.com/api/payment/payment_callback'
     request.need_encrypt = True
 
     try:
@@ -45,14 +48,20 @@ def desktop_web_pay():
     except Exception as e:
         logging.exception('Failed to call Alipay')
 
-def mobile_web_pay():
-    pass
+# def mobile_web_pay():
+#     pass
 
-def verify_alipay_signature(params: QueryDict):
+def verify_alipay_notification(params: QueryDict):
     # params = dict(params)
     params = params.copy()
 
-    if 'sign' not in params:
+    if 'sign' not in params \
+        or 'seller_id' not in params \
+        or 'app_id' not in params:
+        return False
+    
+    if params['seller_id'] != alipay_config_dict['SellerId'] \
+        or params['app_id'] != alipay_config_dict['AppId']:
         return False
     
     signature = params['sign']
