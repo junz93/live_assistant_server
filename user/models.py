@@ -50,22 +50,22 @@ class SubscriptionProductId:
 SUBSCRIPTION_PRODUCTS = {
     SubscriptionProductId.SP1: {
         'id': SubscriptionProductId.SP1,
-        # 'price': '540',
-        'price': '3',
+        # 'price': '540.00',
+        'price': '3.00',
         'time_months': 12,
         'order_product_name': '主播AI助手 一年会员',
     },
     SubscriptionProductId.SP2: {
         'id': SubscriptionProductId.SP2,
-        # 'price': '180',
-        'price': '2',
+        # 'price': '180.00',
+        'price': '2.00',
         'time_months': 3,
         'order_product_name': '主播AI助手 三个月会员',
     },
     SubscriptionProductId.SP3: {
         'id': SubscriptionProductId.SP3,
-        # 'price': '90',
-        'price': '1',
+        # 'price': '90.00',
+        'price': '1.00',
         'time_months': 1,
         'order_product_name': '主播AI助手 一个月会员',
     },

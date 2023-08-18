@@ -140,10 +140,16 @@ def payment_callback(request: HttpRequest):
     order_id = params['out_trade_no']
     if order_id.startswith(SubscriptionOrder.ORDER_ID_PREFIX):
         subscription_order = SubscriptionOrder.objects.get(order_id=order_id)
+        if subscription_order.paid_datetime:
+            logging.warning(f'Order {order_id} was already paid')
+            return HttpResponse('success')
+
         # if subscription_order.amount_str != params['total_amount']:
         #     logging.warning(f'Amount for order ID {order_id} does not match the Alipay order: {params["total_amount"]}')
+        #     return HttpResponse('fail')
         subscription_order.paid_datetime = timezone.now()
         subscription_order.save()
+        
         try:
             subscription = Subscription.objects.get(user_id=subscription_order.user.id)
         except Subscription.DoesNotExist:
