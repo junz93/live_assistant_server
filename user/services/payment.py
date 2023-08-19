@@ -40,6 +40,7 @@ def get_alipay_payment_form_desktop_web(order_id: str, subject: str, total_amoun
 
     request = AlipayTradePagePayRequest(model)
     request.notify_url = 'http://assistant.wusejietech.com/api/payment/payment_callback'
+    request.return_url = 'http://assistant.wusejietech.com/api/payment/payment_return'
     request.need_encrypt = True
 
     try:

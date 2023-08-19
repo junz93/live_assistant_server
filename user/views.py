@@ -1,13 +1,26 @@
 from assistant.models import Character
 from django.contrib.auth import authenticate, login, logout
 from django.core.exceptions import ValidationError
-from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
+from django.http import (
+    HttpRequest, 
+    HttpResponse, 
+    HttpResponseBadRequest, 
+    HttpResponseForbidden, 
+    HttpResponseRedirect, 
+    JsonResponse
+)
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
-from datetime import date, timedelta
+from datetime import date
 from dateutil.relativedelta import relativedelta
-from .models import User, Subscription, SubscriptionStatus, SubscriptionOrder, SUBSCRIPTION_PRODUCTS
+from .models import (
+    User, 
+    Subscription, 
+    SubscriptionStatus, 
+    SubscriptionOrder, 
+    SUBSCRIPTION_PRODUCTS
+)
 from .services import payment
 
 import logging
@@ -151,6 +164,10 @@ def pay_for_subscription_alipay(request: HttpRequest):
 @require_GET
 def pay_for_subscription_wechat(request: HttpRequest):
     return HttpResponseBadRequest("Not supported")
+
+@require_GET
+def payment_return(request: HttpRequest):
+    return HttpResponseRedirect('/#/me')
 
 @csrf_exempt
 @require_POST
