@@ -8,9 +8,10 @@ from alipay.aop.api.request.AlipayTradePagePayRequest import AlipayTradePagePayR
 from alipay.aop.api.response.AlipayTradePagePayResponse import AlipayTradePagePayResponse
 from alipay.aop.api.util.SignatureUtils import verify_with_rsa
 from config_utils import auth_config
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from django.conf import settings
 from django.http.request import QueryDict
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger()
 
@@ -27,7 +28,7 @@ if settings.DEBUG:
 alipay_client = DefaultAlipayClient(alipay_client_config, logger)
 
 def generate_order_id(prefix=''):
-    dt = datetime.now(tz=timezone(timedelta(hours=8)))
+    dt = datetime.now(tz=ZoneInfo('Asia/Shanghai'))
     # TODO: add some random digits to the end
     return dt.strftime(f'{prefix}%Y%m%d%H%M%S%f')
 

@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
+from django.utils import timezone
 
 class UserManager(BaseUserManager):
     def create_user(self, username, mobile_phone, password, **extra_fields):
@@ -14,6 +15,7 @@ class UserManager(BaseUserManager):
     def create_superuser(self, username, mobile_phone, password, **extra_fields):
         return self.create_user(username, mobile_phone, password, extra_fields)
 
+
 class User(AbstractBaseUser):
     username = models.CharField(max_length=150, unique=True)
     mobile_phone = models.CharField(max_length=11, unique=True)
@@ -24,17 +26,6 @@ class User(AbstractBaseUser):
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['mobile_phone']
 
-    # @classmethod
-    # def from_dict(cls, data: dict):
-    #     user = cls()
-    #     user.copy_from_dict(data)
-    #     return user
-
-    # def copy_from_dict(self, data: dict):
-    #     self.mobile_phone = data.get('mobile_phone')
-    #     self.username = self.mobile_phone
-    #     if 'password' in data:
-    #         self.password_hash = password_hasher.hash(data['password'])
 
 class SubscriptionStatus:
     ACTIVE = 'ACTIVE'
@@ -45,6 +36,12 @@ class Subscription(models.Model):
     expiry_datetime = models.DateTimeField()
     created_datetime = models.DateTimeField(auto_now_add=True, editable=False)
     updated_datetime = models.DateTimeField(auto_now=True, editable=False)
+
+    def get_subscription_status(self):
+        return SubscriptionStatus.ACTIVE if self.expiry_datetime > timezone.now() else SubscriptionStatus.INACTIVE
+    
+    def get_expiry_timestamp(self):
+        return int(self.expiry_datetime.timestamp())
 
 class SubscriptionProductId:
     SP1 = 'SP1'
@@ -93,4 +90,8 @@ class SubscriptionOrder(models.Model):
     paid_datetime = models.DateTimeField(null=True, blank=True)
 
 class Usage(models.Model):
-    pass
+    user = models.ForeignKey('user.User', on_delete=models.CASCADE)
+    date = models.DateField()
+    time_seconds = models.IntegerField(default=0)
+    # updated_datetime = models.DateTimeField(auto_now=True)
+    updated_datetime = models.DateTimeField(default=timezone.now)

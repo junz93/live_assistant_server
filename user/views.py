@@ -1,30 +1,34 @@
-from assistant.models import Character
 from django.contrib.auth import authenticate, login, logout
 from django.core.exceptions import ValidationError
 from django.http import (
-    HttpRequest, 
-    HttpResponse, 
-    HttpResponseBadRequest, 
-    HttpResponseForbidden, 
-    HttpResponseRedirect, 
+    HttpRequest,
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseForbidden,
+    HttpResponseRedirect,
     JsonResponse
 )
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
-from datetime import date
+from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
+from zoneinfo import ZoneInfo
+
+from assistant.models import Character
 from .models import (
-    User, 
-    Subscription, 
-    SubscriptionStatus, 
-    SubscriptionOrder, 
-    SUBSCRIPTION_PRODUCTS
+    Subscription,
+    SubscriptionOrder,
+    SubscriptionStatus,
+    SUBSCRIPTION_PRODUCTS,
+    Usage,
+    User,
 )
 from .services import payment
 
 import logging
 import json
+
 
 @csrf_exempt
 @require_POST
@@ -39,10 +43,10 @@ def register(request: HttpRequest):
             password=password,
         )
 
-        # trial_subscription = Subscription.objects.create(
-        #     user=new_user,
-        #     expiry_datetime = timezone.now() + relativedelta(days=3)
-        # )
+        trial_subscription = Subscription.objects.create(
+            user=new_user,
+            expiry_datetime=(timezone.now() + relativedelta(days=3))
+        )
 
         # TODO: decouple the default character creation from register endpoint
         default_character_a = Character(
@@ -75,7 +79,7 @@ def register(request: HttpRequest):
 
         Character.objects.bulk_create([default_character_a, default_character_b])
         
-        return JsonResponse({ 'id': new_user.id })
+        return JsonResponse({'id': new_user.id})
     except (ValidationError, ValueError) as e:
         return HttpResponseBadRequest('Invalid input')
 
@@ -103,10 +107,11 @@ def get_user_info(request: HttpRequest):
     if not request.user.is_authenticated:
         return HttpResponseForbidden('Not logged in')
     
-    try:
-        subscription = Subscription.objects.get(user_id=request.user.id)
-    except Subscription.DoesNotExist:
-        subscription = None
+    subscription = get_subscription(request.user)
+    # try:
+    #     subscription = Subscription.objects.get(user_id=request.user.id)
+    # except Subscription.DoesNotExist:
+    #     subscription = None
 
     return JsonResponse({
         'id': request.user.id,
@@ -115,21 +120,74 @@ def get_user_info(request: HttpRequest):
         'subscription_expiry_time': get_subscription_expiry_timestamp(subscription),
     })
 
+def get_subscription(user: User):
+    try:
+        return Subscription.objects.get(user_id=user.id)
+    except Subscription.DoesNotExist:
+        return None
+
 def get_subscription_status(subscription: Subscription):
     if not subscription:
         return SubscriptionStatus.INACTIVE
-    return SubscriptionStatus.ACTIVE if subscription.expiry_datetime > timezone.now() else SubscriptionStatus.INACTIVE
+    return subscription.get_subscription_status()
     
 def get_subscription_expiry_timestamp(subscription: Subscription):
     if not subscription:
         return None
-    return int(subscription.expiry_datetime.timestamp())
+    return subscription.get_expiry_timestamp()
 
 @csrf_exempt
 @require_POST
 def log_out(request: HttpRequest):
     logout(request)
     return HttpResponse()
+
+def get_usage(user: User, today: date, create: bool = False):
+    try:
+        return Usage.objects.get(user_id=user.id, date=today)
+    except Usage.DoesNotExist:
+        return Usage(user=user, date=today) if create else None
+
+@csrf_exempt
+@require_POST
+def record_usage(request: HttpRequest):
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden('Not logged in')
+    
+    #  UTC+8
+    today = datetime.now(tz=ZoneInfo('Asia/Shanghai')).date()
+    usage = get_usage(request.user, today, create=True)
+    now = timezone.now()
+    diff_seconds = int((now - usage.updated_datetime).total_seconds())
+    if diff_seconds >= 0:
+        PING_INTERVAL_THRESHOLD = 50
+        if diff_seconds < PING_INTERVAL_THRESHOLD:
+            usage.time_seconds += diff_seconds
+        usage.updated_datetime = now
+        usage.save()
+
+    return HttpResponse()
+
+@require_GET
+def get_usage_info(request: HttpRequest):
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden('Not logged in')
+    
+    subscription = get_subscription(request.user)
+    subscription_status = get_subscription_status(subscription)
+    max_time_seconds = 3600 * 5 if subscription_status == SubscriptionStatus.ACTIVE else 3600
+    #  UTC+8
+    today = datetime.now(tz=ZoneInfo('Asia/Shanghai')).date()
+    usage = get_usage(request.user, today)
+    # try:
+    #     usage = Usage.objects.get(user_id=request.user.id, date=today_date)
+    # except Usage.DoesNotExist:
+    #     usage = None
+
+    remaining_time_seconds = max(max_time_seconds - usage.time_seconds, 0) if usage else max_time_seconds
+
+    return JsonResponse({'remaining_time_seconds': remaining_time_seconds})
+
 
 @require_GET
 def pay_for_subscription_alipay(request: HttpRequest):
@@ -181,7 +239,7 @@ def payment_callback(request: HttpRequest):
 
     order_id = params['out_trade_no']
     if order_id.startswith(SubscriptionOrder.ORDER_ID_PREFIX):
-        subscription_order = SubscriptionOrder.objects.get(order_id=order_id)
+        subscription_order = SubscriptionOrder.objects.get(orPder_id=order_id)
         if subscription_order.paid_datetime:
             logging.warning(f'Order {order_id} was already paid')
             return HttpResponse('success')
