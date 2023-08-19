@@ -36,6 +36,10 @@ class User(AbstractBaseUser):
     #     if 'password' in data:
     #         self.password_hash = password_hasher.hash(data['password'])
 
+class SubscriptionStatus:
+    ACTIVE = 'ACTIVE'
+    INACTIVE = 'INACTIVE'
+
 class Subscription(models.Model):
     user = models.ForeignKey('user.User', on_delete=models.CASCADE)
     expiry_datetime = models.DateTimeField()
@@ -51,21 +55,21 @@ SUBSCRIPTION_PRODUCTS = {
     SubscriptionProductId.SP1: {
         'id': SubscriptionProductId.SP1,
         # 'price': '540.00',
-        'price': '3.00',
+        'price': '1.50',
         'time_months': 12,
         'order_product_name': '主播AI助手 一年会员',
     },
     SubscriptionProductId.SP2: {
         'id': SubscriptionProductId.SP2,
         # 'price': '180.00',
-        'price': '2.00',
+        'price': '1.00',
         'time_months': 3,
         'order_product_name': '主播AI助手 三个月会员',
     },
     SubscriptionProductId.SP3: {
         'id': SubscriptionProductId.SP3,
         # 'price': '90.00',
-        'price': '1.00',
+        'price': '0.50',
         'time_months': 1,
         'order_product_name': '主播AI助手 一个月会员',
     },
@@ -87,3 +91,6 @@ class SubscriptionOrder(models.Model):
     amount_str = models.CharField(max_length=15)
     created_datetime = models.DateTimeField(auto_now_add=True, editable=False)
     paid_datetime = models.DateTimeField(null=True, blank=True)
+
+class Usage(models.Model):
+    pass

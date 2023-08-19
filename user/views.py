@@ -7,7 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
-from .models import User, Subscription, SubscriptionOrder, SUBSCRIPTION_PRODUCTS
+from .models import User, Subscription, SubscriptionStatus, SubscriptionOrder, SUBSCRIPTION_PRODUCTS
 from .services import payment
 
 import logging
@@ -25,6 +25,11 @@ def register(request: HttpRequest):
             mobile_phone=mobile_phone, 
             password=password,
         )
+
+        # trial_subscription = Subscription.objects.create(
+        #     user=new_user,
+        #     expiry_datetime = timezone.now() + relativedelta(days=3)
+        # )
 
         # TODO: decouple the default character creation from register endpoint
         default_character_a = Character(
@@ -85,7 +90,27 @@ def get_user_info(request: HttpRequest):
     if not request.user.is_authenticated:
         return HttpResponseForbidden('Not logged in')
     
-    return JsonResponse({ 'id': request.user.id, 'mobile_phone': request.user.mobile_phone })
+    try:
+        subscription = Subscription.objects.get(user_id=request.user.id)
+    except Subscription.DoesNotExist:
+        subscription = None
+
+    return JsonResponse({
+        'id': request.user.id,
+        'mobile_phone': request.user.mobile_phone,
+        'subscription_status': get_subscription_status(subscription),
+        'subscription_expiry_time': get_subscription_expiry_timestamp(subscription),
+    })
+
+def get_subscription_status(subscription: Subscription):
+    if not subscription:
+        return SubscriptionStatus.INACTIVE
+    return SubscriptionStatus.ACTIVE if subscription.expiry_datetime > timezone.now() else SubscriptionStatus.INACTIVE
+    
+def get_subscription_expiry_timestamp(subscription: Subscription):
+    if not subscription:
+        return None
+    return int(subscription.expiry_datetime.timestamp())
 
 @csrf_exempt
 @require_POST
@@ -149,7 +174,7 @@ def payment_callback(request: HttpRequest):
         #     return HttpResponse('fail')
         subscription_order.paid_datetime = timezone.now()
         subscription_order.save()
-        
+
         try:
             subscription = Subscription.objects.get(user_id=subscription_order.user.id)
         except Subscription.DoesNotExist:
