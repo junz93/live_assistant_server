@@ -1,17 +1,17 @@
-import base64
-import logging
-
 from alipay.aop.api.AlipayClientConfig import AlipayClientConfig
 from alipay.aop.api.DefaultAlipayClient import DefaultAlipayClient
 from alipay.aop.api.domain.AlipayTradePagePayModel import AlipayTradePagePayModel
 from alipay.aop.api.request.AlipayTradePagePayRequest import AlipayTradePagePayRequest
 from alipay.aop.api.response.AlipayTradePagePayResponse import AlipayTradePagePayResponse
 from alipay.aop.api.util.SignatureUtils import verify_with_rsa
-from config_utils import auth_config
-from datetime import datetime
 from django.conf import settings
 from django.http.request import QueryDict
-from zoneinfo import ZoneInfo
+
+from utils.config import auth_config
+from utils.time import cst_now
+
+import base64
+import logging
 
 logger = logging.getLogger()
 
@@ -28,9 +28,8 @@ if settings.DEBUG:
 alipay_client = DefaultAlipayClient(alipay_client_config, logger)
 
 def generate_order_id(prefix=''):
-    dt = datetime.now(tz=ZoneInfo('Asia/Shanghai'))
     # TODO: add some random digits to the end
-    return dt.strftime(f'{prefix}%Y%m%d%H%M%S%f')
+    return cst_now().strftime(f'{prefix}%Y%m%d%H%M%S%f')
 
 def get_alipay_payment_form_desktop_web(order_id: str, subject: str, total_amount: str):
     model = AlipayTradePagePayModel()

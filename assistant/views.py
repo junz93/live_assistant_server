@@ -4,12 +4,15 @@ from django.shortcuts import render, get_object_or_404
 # from django.template.context_processors import csrf
 from django.middleware import csrf
 from django.views.decorators.http import require_GET, require_POST
+
 from .models import Character, Script
 from .services import gpt
+from utils.userauth import check_usage_limit
 
 import json
 import logging
 import time
+
 
 @require_GET
 def danmu_interaction(request: HttpRequest):
@@ -21,12 +24,9 @@ def get_csrf_token(request: HttpRequest):
         'token': csrf.get_token(request),
     })
 
+@check_usage_limit
 @require_POST
 def create_character(request: HttpRequest):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-    
-    # logging.info(f'User ID: {request.user.id}')
     try:
         character_dict: dict = json.loads(request.body)
         character = Character.from_dict(character_dict, request.user)
@@ -36,17 +36,12 @@ def create_character(request: HttpRequest):
     except (ValidationError, ValueError) as e:
         return HttpResponseBadRequest('Invalid input')
 
+@check_usage_limit
 @require_POST
 def update_character(request: HttpRequest, id: int):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-    
     try:
         character_dict: dict = json.loads(request.body)
         character = Character.objects.get(id=id, user_id=request.user.id)
-        # if character.user.id != request.user.id:
-        #     return HttpResponseForbidden(f"Not allowed to update the character with ID {id}")
-        
         character.copy_from_dict(character_dict)
         character.full_clean()
         character.save()
@@ -56,39 +51,31 @@ def update_character(request: HttpRequest, id: int):
         return HttpResponseBadRequest('Invalid input')
     except Character.DoesNotExist:
         return HttpResponseNotFound(f'Cannot find a character with ID {id}')
-    
+
+@check_usage_limit
 @require_POST
 def delete_character(request: HttpRequest, id: int):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-    
     Character.objects.filter(id=id, user_id=request.user.id).delete()
     return HttpResponse()
 
+@check_usage_limit
 @require_GET
 def get_character(request: HttpRequest, id: int):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-    
     try:
         character = Character.objects.get(id=id, user_id=request.user.id)
         return JsonResponse(character.to_dict(), json_dumps_params={'ensure_ascii': False})
     except Character.DoesNotExist:
         return HttpResponseNotFound(f'Cannot find a character with ID {id}')
 
+@check_usage_limit
 @require_GET
 def get_all_characters(request: HttpRequest):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-    
     characters = [character.to_dict() for character in Character.objects.filter(user_id=request.user.id)]
     return JsonResponse(characters, safe=False, json_dumps_params={'ensure_ascii': False})
 
+@check_usage_limit
 @require_GET
 def generate_answer_as_character(request: HttpRequest, character_id: int):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-    
     question = request.GET.get('question', default='')
     if not question.strip():
         return HttpResponseBadRequest('Missing or empty parameter: "question"')
@@ -109,12 +96,10 @@ def generate_answer_as_character(request: HttpRequest, character_id: int):
         return JsonResponse(response, json_dumps_params={'ensure_ascii': False})
     except Character.DoesNotExist:
         return HttpResponseNotFound(f'Cannot find a character with ID {character_id}')
-    
+
+@check_usage_limit
 @require_GET
 def generate_script_as_character(request: HttpRequest, character_id: int):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-    
     description = request.GET.get('description', default='')
     if not description.strip():
         return HttpResponseBadRequest('Missing or empty parameter: "description"')
@@ -135,12 +120,10 @@ def generate_script_as_character(request: HttpRequest, character_id: int):
         return JsonResponse(response, json_dumps_params={'ensure_ascii': False})
     except Character.DoesNotExist:
         return HttpResponseNotFound(f'Cannot find a character with ID {character_id}')
-    
+
+@check_usage_limit
 @require_POST
 def create_script(request: HttpRequest):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-    
     try:
         script_dict: dict = json.loads(request.body)
         script = Script.from_dict(script_dict, request.user)
@@ -150,11 +133,9 @@ def create_script(request: HttpRequest):
     except (ValidationError, ValueError) as e:
         return HttpResponseBadRequest('Invalid input')
 
+@check_usage_limit
 @require_POST
 def update_script(request: HttpRequest, id: int):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-    
     try:
         script_dict: dict = json.loads(request.body)
         script = Script.objects.get(id=id, user_id=request.user.id)
@@ -167,30 +148,24 @@ def update_script(request: HttpRequest, id: int):
         return HttpResponseBadRequest('Invalid input')
     except Script.DoesNotExist:
         return HttpResponseNotFound(f'Cannot find a script with ID {id}')
-    
+
+@check_usage_limit
 @require_POST
 def delete_script(request: HttpRequest, id: int):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-    
     Script.objects.filter(id=id, user_id=request.user.id).delete()
     return HttpResponse()
 
+@check_usage_limit
 @require_GET
 def get_script(request: HttpRequest, id: int):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-    
     try:
         script = Script.objects.get(id=id, user_id=request.user.id)
         return JsonResponse(script.to_dict(), json_dumps_params={'ensure_ascii': False})
     except Script.DoesNotExist:
         return HttpResponseNotFound(f'Cannot find a script with ID {id}')
 
+@check_usage_limit
 @require_GET
 def get_all_scripts(request: HttpRequest):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-    
     scripts = [script.to_dict() for script in Script.objects.filter(user_id=request.user.id)]
     return JsonResponse(scripts, safe=False, json_dumps_params={'ensure_ascii': False})

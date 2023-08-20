@@ -8,16 +8,17 @@ import pickle
 import time
 import urllib.request
 
-from assistant.models import Character
 from collections import defaultdict
-from config_utils import auth_config
 from datetime import datetime
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import TokenTextSplitter
 from langchain.document_loaders import DirectoryLoader
 from langchain.vectorstores.faiss import FAISS
 from langchain.docstore.document import Document
+
 from . import content_censorship
+from assistant.models import Character
+from utils.config import auth_config
 
 
 openai.api_key = auth_config['openai']['ApiKey']

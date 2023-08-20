@@ -11,20 +11,20 @@ from django.http import (
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
-from datetime import date, datetime, timedelta
+from datetime import date
 from dateutil.relativedelta import relativedelta
-from zoneinfo import ZoneInfo
 
-from assistant.models import Character
 from .models import (
     Subscription,
     SubscriptionOrder,
-    SubscriptionStatus,
     SUBSCRIPTION_PRODUCTS,
     Usage,
     User,
 )
 from .services import payment
+from assistant.models import Character
+from utils.time import cst_now
+from utils.userauth import require_login
 
 import logging
 import json
@@ -83,6 +83,7 @@ def register(request: HttpRequest):
     except (ValidationError, ValueError) as e:
         return HttpResponseBadRequest('Invalid input')
 
+
 @csrf_exempt
 @require_POST
 def log_in(request: HttpRequest):
@@ -102,39 +103,19 @@ def log_in(request: HttpRequest):
     except (ValidationError, ValueError) as e:
         return HttpResponseBadRequest('Invalid input')
 
+
+@require_login
 @require_GET
 def get_user_info(request: HttpRequest):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-    
-    subscription = get_subscription(request.user)
-    # try:
-    #     subscription = Subscription.objects.get(user_id=request.user.id)
-    # except Subscription.DoesNotExist:
-    #     subscription = None
+    subscription = Subscription.get_unique(request.user)
 
     return JsonResponse({
         'id': request.user.id,
         'mobile_phone': request.user.mobile_phone,
-        'subscription_status': get_subscription_status(subscription),
-        'subscription_expiry_time': get_subscription_expiry_timestamp(subscription),
+        'subscription_status': Subscription.get_status(subscription),
+        'subscription_expiry_time': Subscription.get_expiry_timestamp(subscription),
     })
 
-def get_subscription(user: User):
-    try:
-        return Subscription.objects.get(user_id=user.id)
-    except Subscription.DoesNotExist:
-        return None
-
-def get_subscription_status(subscription: Subscription):
-    if not subscription:
-        return SubscriptionStatus.INACTIVE
-    return subscription.get_subscription_status()
-    
-def get_subscription_expiry_timestamp(subscription: Subscription):
-    if not subscription:
-        return None
-    return subscription.get_expiry_timestamp()
 
 @csrf_exempt
 @require_POST
@@ -148,14 +129,12 @@ def get_usage(user: User, today: date, create: bool = False):
     except Usage.DoesNotExist:
         return Usage(user=user, date=today) if create else None
 
+
 @csrf_exempt
+@require_login
 @require_POST
 def record_usage(request: HttpRequest):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-    
-    #  UTC+8
-    today = datetime.now(tz=ZoneInfo('Asia/Shanghai')).date()
+    today = cst_now().date()
     usage = get_usage(request.user, today, create=True)
     now = timezone.now()
     diff_seconds = int((now - usage.updated_datetime).total_seconds())
@@ -168,32 +147,21 @@ def record_usage(request: HttpRequest):
 
     return HttpResponse()
 
+
+@require_login
 @require_GET
 def get_usage_info(request: HttpRequest):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
+    subscription = Subscription.get_unique(request.user)
     
-    subscription = get_subscription(request.user)
-    subscription_status = get_subscription_status(subscription)
-    max_time_seconds = 3600 * 5 if subscription_status == SubscriptionStatus.ACTIVE else 3600
-    #  UTC+8
-    today = datetime.now(tz=ZoneInfo('Asia/Shanghai')).date()
+    today = cst_now().date()
     usage = get_usage(request.user, today)
-    # try:
-    #     usage = Usage.objects.get(user_id=request.user.id, date=today_date)
-    # except Usage.DoesNotExist:
-    #     usage = None
 
-    remaining_time_seconds = max(max_time_seconds - usage.time_seconds, 0) if usage else max_time_seconds
-
-    return JsonResponse({'remaining_time_seconds': remaining_time_seconds})
+    return JsonResponse({'remaining_time_seconds': Usage.get_remaining_time_seconds(usage, subscription)})
 
 
+@require_login
 @require_GET
 def pay_for_subscription_alipay(request: HttpRequest):
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden('Not logged in')
-
     params = request.GET
 
     if 'product_id' not in params:
@@ -219,13 +187,16 @@ def pay_for_subscription_alipay(request: HttpRequest):
     )
     return HttpResponse(form_html)
 
+
 @require_GET
 def pay_for_subscription_wechat(request: HttpRequest):
     return HttpResponseBadRequest("Not supported")
 
+
 @require_GET
 def payment_return(request: HttpRequest):
     return HttpResponseRedirect('/#/me')
+
 
 @csrf_exempt
 @require_POST

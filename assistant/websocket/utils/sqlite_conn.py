@@ -1,19 +1,13 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 2023/6/21 15:03
-# @Author  : zhongzhilai
-# @File    : sqlite_conn.py
-# @Description :
-
 import logging
 import sqlite3
 import time
 import traceback
 
 from collections import defaultdict
-from config_utils import db_config
 from threading import Lock
+
 from . import message as message_utils
+from utils.config import db_config
 
 
 class LiteDb(object):
