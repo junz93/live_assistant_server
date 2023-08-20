@@ -210,7 +210,7 @@ def payment_callback(request: HttpRequest):
 
     order_id = params['out_trade_no']
     if order_id.startswith(SubscriptionOrder.ORDER_ID_PREFIX):
-        subscription_order = SubscriptionOrder.objects.get(orPder_id=order_id)
+        subscription_order = SubscriptionOrder.objects.get(order_id=order_id)
         if subscription_order.paid_datetime:
             logging.warning(f'Order {order_id} was already paid')
             return HttpResponse('success')
