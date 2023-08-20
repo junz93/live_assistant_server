@@ -1,4 +1,3 @@
-# import asgiref.sync
 import asyncio
 import json
 import logging
@@ -6,14 +5,16 @@ import threading
 import time
 
 from asgiref.sync import sync_to_async
-from assistant.models import Character
-from assistant.services import gpt
 from channels.db import database_sync_to_async
 from channels.generic.http import AsyncHttpConsumer
 from channels.generic.websocket import WebsocketConsumer
 from urllib.parse import parse_qs
+
 from .douyin import DouyinLiveHandler
-# from .utils.handlers import MessageHandler
+from assistant.models import Character
+from assistant.services import gpt
+from utils.userauth import is_usage_limit_reached
+
 
 class LivePromptConsumer(WebsocketConsumer):
     # def __init__(self, *args, **kwargs):
@@ -28,6 +29,9 @@ class LivePromptConsumer(WebsocketConsumer):
 
         user = self.scope['user']
         if not user.is_authenticated:
+            self.close()
+            return
+        if is_usage_limit_reached(user):
             self.close()
             return
         
@@ -80,7 +84,8 @@ class LivePromptConsumer(WebsocketConsumer):
                 # See http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_read_timeout
                 self.send(text_data=json.dumps({ 'type': 'PONG' }, ensure_ascii=False))
 
-    # TODO: probably not needed
+    # TODO: probably not needed especially when nginx is used (proxy_read_timeout)
+    #       Also, the connection will be closed if the browser tab/window is closed
     def _monitor_ping(self):
         while True:
             if self.closed:
@@ -94,9 +99,6 @@ class LivePromptConsumer(WebsocketConsumer):
                 break
             time.sleep(5)
 
-def generate(end):
-    for i in range(end):
-        yield i
 
 class AiAnswerConsumer(AsyncHttpConsumer):
     async def handle(self, body):
@@ -109,6 +111,11 @@ class AiAnswerConsumer(AsyncHttpConsumer):
         user = self.scope['user']
         if not user.is_authenticated:
             await self.close(403, 'Not logged in')
+            return
+
+        if await database_sync_to_async(is_usage_limit_reached)(user):
+            await self.close(403, 'Max usage time was reached')
+            return
 
         path_params = self.scope['url_route']['kwargs']
         query_params = parse_qs(self.scope['query_string'].decode(encoding='utf-8'))
@@ -138,7 +145,7 @@ class AiAnswerConsumer(AsyncHttpConsumer):
                     await self.close(500, 'Failed to generate content')
                     return
                 
-                logging.info('Received a segment')
+                # logging.info('Received a segment')
                 await self.send_message(segment)
                 await asyncio.sleep(0.1)
             
