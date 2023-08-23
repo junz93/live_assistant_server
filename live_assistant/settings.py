@@ -169,17 +169,22 @@ if DEBUG:
     # CORS_ALLOW_ALL_ORIGINS = True
 
     # Allow cross-origin request to use auth cookies/headers (credentials mode)
-    CORS_ALLOW_CREDENTIALS = True
+    # CORS_ALLOW_CREDENTIALS = True
+
+    # CORS_ALLOWED_ORIGIN_REGEXES = [
+    # ]
 
     CORS_ALLOWED_ORIGINS = [
-        'http://47.103.50.65:9528',
-        'http://assistant.wusejietech.com:9528',
+        'http://wusejietech.com',
+        'http://www.wusejietech.com',
+        'http://localhost:8080',
+        'http://localhost:9528',
     ]
     
-    CSRF_TRUSTED_ORIGINS = [
-        'http://47.103.50.65:9528',
-        'http://assistant.wusejietech.com:9528',
-    ]
+    # CSRF_TRUSTED_ORIGINS = [
+    #     'http://47.103.50.65:9528',
+    #     'http://assistant.wusejietech.com:9528',
+    # ]
 else:
     # TODO: set CORS headers for only required endpoints
     pass
