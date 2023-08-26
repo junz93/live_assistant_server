@@ -178,7 +178,7 @@ if DEBUG:
         'http://wusejietech.com',
         'http://www.wusejietech.com',
         'http://localhost:8080',
-        'http://localhost:9528',
+        'null',
     ]
     
     # CSRF_TRUSTED_ORIGINS = [
@@ -187,7 +187,11 @@ if DEBUG:
     # ]
 else:
     # TODO: set CORS headers for only required endpoints
-    pass
+    CORS_ALLOWED_ORIGINS = [
+        'http://wusejietech.com',
+        'http://www.wusejietech.com',
+        'null',
+    ]
 
 
 # Internationalization
