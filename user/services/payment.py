@@ -13,6 +13,7 @@ from utils.time import cst_now
 import base64
 import logging
 
+
 logger = logging.getLogger()
 
 alipay_config_dict = auth_config['alipay-sandbox' if settings.DEBUG else 'alipay']
@@ -27,9 +28,11 @@ if settings.DEBUG:
 
 alipay_client = DefaultAlipayClient(alipay_client_config, logger)
 
+
 def generate_order_id(prefix=''):
     # TODO: add some random digits to the end
     return cst_now().strftime(f'{prefix}%Y%m%d%H%M%S%f')
+
 
 def get_alipay_payment_form_desktop_web(order_id: str, subject: str, total_amount: str):
     model = AlipayTradePagePayModel()
@@ -49,8 +52,29 @@ def get_alipay_payment_form_desktop_web(order_id: str, subject: str, total_amoun
     except Exception as e:
         logging.exception('Failed to call Alipay')
 
+
+def get_desktop_alipay_payment_url(order_id: str, subject: str, total_amount: str):
+    model = AlipayTradePagePayModel()
+    model.out_trade_no = order_id  # Example: 20230813123540433476
+    model.subject = subject
+    model.total_amount = total_amount
+    model.product_code = 'FAST_INSTANT_TRADE_PAY'
+
+    request = AlipayTradePagePayRequest(model)
+    request.notify_url = 'http://assistant.wusejietech.com/api/payment/payment_callback'
+    # request.return_url = 'http://assistant.wusejietech.com/api/payment/payment_return'
+    request.need_encrypt = True
+
+    try:
+        query_str = alipay_client.sdk_execute(request)
+        return f'{alipay_client_config.server_url}?{query_str}'
+    except Exception as e:
+        logging.exception('Failed to call Alipay')
+
+
 # def mobile_web_pay():
 #     pass
+
 
 def verify_alipay_notification(params: QueryDict):
     # params = dict(params)

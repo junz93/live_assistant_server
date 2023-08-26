@@ -18,11 +18,13 @@ import time
 def danmu_interaction(request: HttpRequest):
     return render(request, 'assistant/danmu_interaction.html', {})
 
+
 @require_GET
 def get_csrf_token(request: HttpRequest):
     return JsonResponse({
         'token': csrf.get_token(request),
     })
+
 
 @check_usage_limit
 @require_POST
@@ -35,6 +37,7 @@ def create_character(request: HttpRequest):
         return JsonResponse({'id': character.id})
     except (ValidationError, ValueError) as e:
         return HttpResponseBadRequest('Invalid input')
+
 
 @check_usage_limit
 @require_POST
@@ -52,11 +55,13 @@ def update_character(request: HttpRequest, id: int):
     except Character.DoesNotExist:
         return HttpResponseNotFound(f'Cannot find a character with ID {id}')
 
+
 @check_usage_limit
 @require_POST
 def delete_character(request: HttpRequest, id: int):
     Character.objects.filter(id=id, user_id=request.user.id).delete()
     return HttpResponse()
+
 
 @check_usage_limit
 @require_GET
@@ -67,11 +72,13 @@ def get_character(request: HttpRequest, id: int):
     except Character.DoesNotExist:
         return HttpResponseNotFound(f'Cannot find a character with ID {id}')
 
+
 @check_usage_limit
 @require_GET
 def get_all_characters(request: HttpRequest):
     characters = [character.to_dict() for character in Character.objects.filter(user_id=request.user.id)]
     return JsonResponse(characters, safe=False, json_dumps_params={'ensure_ascii': False})
+
 
 @check_usage_limit
 @require_GET
@@ -97,6 +104,7 @@ def generate_answer_as_character(request: HttpRequest, character_id: int):
     except Character.DoesNotExist:
         return HttpResponseNotFound(f'Cannot find a character with ID {character_id}')
 
+
 @check_usage_limit
 @require_GET
 def generate_script_as_character(request: HttpRequest, character_id: int):
@@ -121,6 +129,7 @@ def generate_script_as_character(request: HttpRequest, character_id: int):
     except Character.DoesNotExist:
         return HttpResponseNotFound(f'Cannot find a character with ID {character_id}')
 
+
 @check_usage_limit
 @require_POST
 def create_script(request: HttpRequest):
@@ -132,6 +141,7 @@ def create_script(request: HttpRequest):
         return JsonResponse({'id': script.id})
     except (ValidationError, ValueError) as e:
         return HttpResponseBadRequest('Invalid input')
+
 
 @check_usage_limit
 @require_POST
@@ -149,11 +159,13 @@ def update_script(request: HttpRequest, id: int):
     except Script.DoesNotExist:
         return HttpResponseNotFound(f'Cannot find a script with ID {id}')
 
+
 @check_usage_limit
 @require_POST
 def delete_script(request: HttpRequest, id: int):
     Script.objects.filter(id=id, user_id=request.user.id).delete()
     return HttpResponse()
+
 
 @check_usage_limit
 @require_GET
@@ -163,6 +175,7 @@ def get_script(request: HttpRequest, id: int):
         return JsonResponse(script.to_dict(), json_dumps_params={'ensure_ascii': False})
     except Script.DoesNotExist:
         return HttpResponseNotFound(f'Cannot find a script with ID {id}')
+
 
 @check_usage_limit
 @require_GET

@@ -188,6 +188,36 @@ def pay_for_subscription_alipay(request: HttpRequest):
     return HttpResponse(form_html)
 
 
+@require_login
+@require_POST
+def get_alipay_payment_url(request: HttpRequest):
+    params = json.loads(request.body)
+
+    if 'product_id' not in params:
+        logging.error('Bad Request')
+        return HttpResponseBadRequest()
+
+    subscription_product = SUBSCRIPTION_PRODUCTS.get(params['product_id'], None)
+    if not subscription_product:
+        return HttpResponseBadRequest()
+
+    order_id = payment.generate_order_id(prefix=SubscriptionOrder.ORDER_ID_PREFIX)
+    SubscriptionOrder.objects.create(
+        order_id=order_id, 
+        user=request.user, 
+        product_id=params['product_id'],
+        amount_str=subscription_product['price'],
+        amount=subscription_product['price'],
+    )
+
+    url = payment.get_desktop_alipay_payment_url(
+        order_id=order_id, 
+        subject=subscription_product['order_product_name'], 
+        total_amount=subscription_product['price'],
+    )
+    return JsonResponse({'url': url}, json_dumps_params={'ensure_ascii': False})
+
+
 @require_GET
 def pay_for_subscription_wechat(request: HttpRequest):
     return HttpResponseBadRequest("Not supported")
