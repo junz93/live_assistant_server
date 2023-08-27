@@ -5,7 +5,7 @@ from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseForbidden,
-    HttpResponseRedirect,
+    # HttpResponseRedirect,
     JsonResponse
 )
 from django.utils import timezone
@@ -20,9 +20,11 @@ from .models import (
     SUBSCRIPTION_PRODUCTS,
     Usage,
     User,
+    VerificationCode
 )
-from .services import payment
+from .services import payment, sms
 from assistant.models import Character
+from utils.verification import generate_verification_code
 from utils.time import cst_now
 from utils.userauth import require_login
 
@@ -34,9 +36,19 @@ import json
 @require_POST
 def register(request: HttpRequest):
     try:
-        new_uesr_dict = json.loads(request.body)
-        mobile_phone = new_uesr_dict.get('mobile_phone')
-        password = new_uesr_dict.get('password')
+        params = json.loads(request.body)
+        mobile_phone = params.get('mobile_phone')
+        code = params.get('code')
+        password = params.get('password')
+        if not mobile_phone or not code or not password:
+            return HttpResponseBadRequest('参数缺失')
+        
+        verification_code = VerificationCode.get_latest(mobile_phone=mobile_phone, code=code)
+        if not verification_code or not verification_code.is_valid():
+            return HttpResponseBadRequest('验证码错误')
+
+        verification_code.invalidate()
+
         new_user = User.objects.create_user(
             username=mobile_phone, 
             mobile_phone=mobile_phone, 
@@ -91,17 +103,31 @@ def log_in(request: HttpRequest):
         return HttpResponse()
     
     try:
-        uesr_dict = json.loads(request.body)
-        mobile_phone = uesr_dict.get('mobile_phone')
-        password = uesr_dict.get('password')
-        user = authenticate(username=mobile_phone, password=password)
+        params = json.loads(request.body)
+        mobile_phone = params.get('mobile_phone')
+        code = params.get('code')
+        password = params.get('password')
+        if not mobile_phone or (not code and not password):
+            return HttpResponseBadRequest()
+        
+        user = None
+        
+        if code:
+            verification_code = VerificationCode.get_latest(mobile_phone=mobile_phone, code=code)
+            if verification_code: 
+                if verification_code.is_valid():
+                    user = User.objects.get(username=mobile_phone)
+                verification_code.invalidate()
+        else:
+            user = authenticate(username=mobile_phone, password=password)
+        
         if user is not None:
             login(request, user)
             return HttpResponse()
         else:
-            return HttpResponseForbidden('Phone number or password is incorrect')
+            return HttpResponseForbidden('参数错误')
     except (ValidationError, ValueError) as e:
-        return HttpResponseBadRequest('Invalid input')
+        return HttpResponseBadRequest('参数无效或缺失')
 
 
 @require_login
@@ -157,6 +183,46 @@ def get_usage_info(request: HttpRequest):
     usage = get_usage(request.user, today)
 
     return JsonResponse({'remaining_time_seconds': Usage.get_remaining_time_seconds(usage, subscription)})
+
+
+@csrf_exempt
+@require_POST
+def send_verification_sms(request: HttpRequest):
+    params = json.loads(request.body)
+    if 'mobile_phone' not in params:
+        return HttpResponseBadRequest()
+    
+    mobile_phone = params['mobile_phone']
+
+    latest_verification_code = VerificationCode.get_latest(mobile_phone=mobile_phone)
+    if latest_verification_code and (timezone.now() - latest_verification_code.created_datetime).total_seconds() < 60:
+        return HttpResponse(status=429)
+    
+    code = generate_verification_code()
+    VerificationCode.objects.create(
+        mobile_phone=mobile_phone,
+        code=code,
+    )
+
+    sms.send_verification_sms(code, mobile_phone)
+    
+    return HttpResponse()
+
+
+@require_GET
+def verify_sms_code(request: HttpRequest):
+    params = request.GET
+
+    if 'mobile_phone' not in params or 'code' not in params:
+        return HttpResponseBadRequest()
+    
+    mobile_phone = params['mobile_phone']
+    code = params['code']
+
+    verification_code = VerificationCode.get_latest(mobile_phone=mobile_phone, code=code)
+    is_valid = bool(verification_code and verification_code.is_valid())
+
+    return JsonResponse({'is_valid': is_valid})
 
 
 @require_login
@@ -223,9 +289,9 @@ def pay_for_subscription_wechat(request: HttpRequest):
     return HttpResponseBadRequest("Not supported")
 
 
-@require_GET
-def payment_return(request: HttpRequest):
-    return HttpResponseRedirect('/#/me')
+# @require_GET
+# def payment_return(request: HttpRequest):
+#     return HttpResponseRedirect('/#/me')
 
 
 @csrf_exempt
