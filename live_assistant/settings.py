@@ -28,8 +28,10 @@ SECRET_KEY = 'django-insecure-ukfj)5a!rhlxh9f-#-!l*_$345kvnmu&b3s4o_@l+ttud%-9qp
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG', '1') == '1'
 
-ALLOWED_HOSTS = ['*']
-
+if DEBUG:
+    ALLOWED_HOSTS = []
+else:
+    ALLOWED_HOSTS = ['.wusejietech.com']
 
 # Application definition
 
@@ -177,6 +179,8 @@ if DEBUG:
     CORS_ALLOWED_ORIGINS = [
         'http://wusejietech.com',
         'http://www.wusejietech.com',
+        'https://wusejietech.com',
+        'https://www.wusejietech.com',
         'http://localhost:8080',
         'null',
     ]
@@ -188,9 +192,8 @@ if DEBUG:
 else:
     # TODO: set CORS headers for only required endpoints
     CORS_ALLOWED_ORIGINS = [
-        'http://wusejietech.com',
-        'http://www.wusejietech.com',
-        'null',
+        'https://wusejietech.com',
+        'https://www.wusejietech.com',
     ]
 
 
