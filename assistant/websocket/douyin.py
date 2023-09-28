@@ -222,14 +222,16 @@ class DouyinLiveHandler:
 
         self.ws_connections.append(ws)
         while True:
-            logging.info('Starting WebSocket infinite event loop...')
-            ws.run_forever()
-            if self.stop_event.is_set():
-                logging.info('Terminated the WS event loop with danmu server as requested')
-                break
-            logging.warning('Encountered an error while in WS infinite loop. Reconnecting...')
-            ws.close()
-            time.sleep(10)
+            try:
+                logging.info('Starting WebSocket infinite event loop...')
+                ws.run_forever()
+            finally:
+                if self.stop_event.is_set():
+                    logging.info('Terminated the WS event loop with danmu server as requested')
+                    break
+                logging.warning('Encountered an error while in WS infinite loop. Reconnecting...')
+                ws.close()
+                time.sleep(10)
 
     def start_danmu_handler(self, room_id, num_threads=1):
         url = f'https://live.douyin.com/{room_id}'
@@ -242,14 +244,18 @@ class DouyinLiveHandler:
         data = res.cookies.get_dict()
         ttwid = data['ttwid']
         res = res.text
-        res = re.search(r'<script id="RENDER_DATA" type="application/json">(.*?)</script>', res)
+        # res = re.search(r'<script id="RENDER_DATA" type="application/json">(.*?)</script>', res)
+        res = re.search(r'<script.*?>([^<>]+?\\"roomInfo\\":{\\"[^<>]+?)<\/script>', res)
         res = res.group(1)
         res = urllib.parse.unquote(res, encoding='utf-8', errors='replace')
-        res = json.loads(res)
-        room_store = res['app']['initialState']['roomStore']
-        internal_room_id = room_store['roomInfo']['roomId']
+        # res = json.loads(res)
+        # room_store = res['app']['initialState']['roomStore']
+        # internal_room_id = room_store['roomInfo']['roomId']
         # room_title = room_store['roomInfo']['room']['title']
-        user_unique_id = res['app']['odin']['user_unique_id']
+        # user_unique_id = res['app']['odin']['user_unique_id']
+        internal_room_id = re.search(r'\\"roomId\\":\\"(\w+?)\\"', res).group(1)
+        user_unique_id = re.search(r'\\"user_unique_id\\":\\"(\w+?)\\"', res).group(1)
+        # room_title = re.search(r'\\"title\\":\\"(.+?)\\"', res).group(1)
         logging.info(f'Retrieved information for the live room. Room ID: {internal_room_id}, user unique ID: {user_unique_id}')
         
         for i in range(num_threads):
